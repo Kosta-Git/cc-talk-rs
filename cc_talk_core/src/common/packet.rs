@@ -110,6 +110,16 @@ where
         }
     }
 
+    pub fn get_checksum(&self) -> Result<u8, PacketError> {
+        let data_length = self.get_data_length()? as usize;
+        let checksum_offset = DATA_OFFSET + data_length;
+        if checksum_offset < MAX_BLOCK_LENGTH {
+            Ok(checksum_offset as u8)
+        } else {
+            Err(PacketError::OutOfBounds)
+        }
+    }
+
     pub fn get_checksum_offset(&self) -> Result<u8, PacketError> {
         Ok(DATA_OFFSET as u8 + self.get_data_length()?)
     }
