@@ -23,4 +23,20 @@ impl Device {
             encrypted: false,
         }
     }
+
+    pub fn address(&self) -> u8 {
+        self.address
+    }
+
+    pub fn category(&self) -> &Category {
+        &self.category
+    }
+
+    pub fn checksum_type(&self) -> &ChecksumType {
+        &self.checksum_type
+    }
+
+    pub fn encrypted(&self) -> bool {
+        self.encrypted
+    }
 }

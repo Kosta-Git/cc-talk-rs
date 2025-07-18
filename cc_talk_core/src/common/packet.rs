@@ -9,6 +9,7 @@ pub const SOURCE_OFFSET: usize = 2;
 pub const HEADER_OFFSET: usize = 3;
 pub const DATA_OFFSET: usize = 4;
 
+/// ccTalk packet structure.
 pub struct Packet<B> {
     buffer: B,
 }
@@ -107,6 +108,10 @@ where
         } else {
             Err(PacketError::DataLengthMismatch)
         }
+    }
+
+    pub fn get_checksum_offset(&self) -> Result<u8, PacketError> {
+        Ok(DATA_OFFSET as u8 + self.get_data_length()?)
     }
 }
 

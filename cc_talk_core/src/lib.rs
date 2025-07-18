@@ -5,6 +5,7 @@ extern crate std;
 
 mod commands;
 mod common;
+mod serde;
 
 pub use common::bill_event_types::BillEvent;
 
@@ -41,4 +42,6 @@ pub mod cc_talk {
     pub use crate::commands::core_plus::*;
     pub use crate::commands::multi_drop::*;
     pub use crate::commands::payout::*;
+
+    pub use crate::serde::*;
 }
