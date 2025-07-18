@@ -1,0 +1,20 @@
+[package]
+name = "cc_talk_core"
+version = "0.0.1-alpha"
+edition = "2024"
+license = "GPL-3.0-or-later"
+authors = ["Kosta S. <github.operation464@simplelogin.com>"]
+description = "A no-std implementation of the CCtalk protocol."
+keywords = ["no-std", "ccTalk", "protocol"]
+repository = "https://github.com/Kosta-Git/no-std-cctalk/"
+readme = "README.md"
+exclude = [".gitignore"]
+
+[features]
+default = []
+crc-lookup = []
+heapless = ["dep:heapless"]
+std = []
+
+[dependencies]
+heapless = { version = "0.8.0", optional = true }

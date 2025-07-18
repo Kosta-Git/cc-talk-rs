@@ -1,0 +1,3 @@
+[workspace]
+resolver = "3"
+members = ["cc_talk_core"]
