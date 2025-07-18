@@ -82,7 +82,7 @@ impl From<&str> for Category {
     /// # Example
     ///
     /// ```
-    /// use no_std_cctalk::Category;
+    /// use cc_talk_core::Category;
     ///
     /// let category = Category::from("CoinAcceptor");
     /// assert_eq!(category, Category::CoinAcceptor);
@@ -200,7 +200,7 @@ impl Address {
     /// # Example
     ///
     /// ```
-    /// use no_std_cctalk::Address;
+    /// use cc_talk_core::Address;
     ///
     /// let hopperAddresses = Address::SingleAndRange(3, 4..=10);
     ///
@@ -224,7 +224,7 @@ impl Address {
     /// # Example
     ///
     /// ```
-    /// use no_std_cctalk::Address;
+    /// use cc_talk_core::Address;
     ///
     /// let hopper_addresses = Address::SingleAndRange(3, 4..=10);
     /// let hopper_iter = hopper_addresses.iter();

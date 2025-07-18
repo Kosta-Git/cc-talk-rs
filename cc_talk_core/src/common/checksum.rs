@@ -40,7 +40,7 @@ pub enum ChecksumType {
 /// # Examples
 ///
 /// ```rust
-/// use no_std_cctalk::cc_talk::crc16;
+/// use cc_talk_core::cc_talk::crc16;
 ///
 /// // Example ccTalk packet: [dest][len][src][header][data...]
 /// let packet = [40, 0, 0x3F, 1, 0x46];

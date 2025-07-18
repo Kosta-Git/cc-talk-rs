@@ -156,7 +156,7 @@ impl HopperFlag {
     /// # Usage
     ///
     /// ```
-    /// use no_std_cctalk::common::hopper_flags::{HopperFlag, parse_hopper_flags};
+    /// use cc_talk_core::common::hopper_flags::{HopperFlag, parse_hopper_flags};
     ///
     /// let register_1 = 0b00000001; // AbsoluteMaximumCurrentExceeded
     /// let register_2 = 0b00000010; // SingleCoinPayoutMode
@@ -215,7 +215,7 @@ impl HopperFlag {
     /// # Usage
     ///
     /// ```
-    /// use no_std_cctalk::common::hopper_flags::{HopperFlag, parse_hopper_flags};
+    /// use cc_talk_core::common::hopper_flags::{HopperFlag, parse_hopper_flags};
     ///
     /// let register_1 = 0b00000001; // AbsoluteMaximumCurrentExceeded
     /// let register_2 = 0b00000010; // SingleCoinPayoutMode
@@ -273,7 +273,7 @@ impl HopperFlag {
     /// # Usage
     ///
     /// ```
-    /// use no_std_cctalk::cc_talk::*;
+    /// use cc_talk_core::cc_talk::*;
     ///
     /// let register_1 = 0b00000001; // AbsoluteMaximumCurrentExceeded
     /// let register_2 = 0b00000010; // SingleCoinPayoutMode

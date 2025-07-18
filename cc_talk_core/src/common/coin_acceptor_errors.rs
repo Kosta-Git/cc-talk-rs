@@ -21,7 +21,7 @@
 ///
 /// ```rust
 /// use std::convert::TryFrom;
-/// use no_std_cctalk::cc_talk::CoinAcceptorError;
+/// use cc_talk_core::cc_talk::CoinAcceptorError;
 ///
 /// // Convert from raw error code
 /// let error = CoinAcceptorError::try_from(1).unwrap();
@@ -316,7 +316,7 @@ impl CoinAcceptorError {
     /// # Examples
     ///
     /// ```rust
-    /// use no_std_cctalk::cc_talk::CoinAcceptorError;
+    /// use cc_talk_core::cc_talk::CoinAcceptorError;
     /// assert!(CoinAcceptorError::RejectCoin.is_coin_rejected());
     /// assert!(CoinAcceptorError::InhibitedCoin.is_coin_rejected());
     /// assert!(!CoinAcceptorError::ValidationTimeout.is_coin_rejected());
@@ -354,7 +354,7 @@ impl CoinAcceptorError {
     /// # Examples
     ///
     /// ```rust
-    /// use no_std_cctalk::cc_talk::CoinAcceptorError;
+    /// use cc_talk_core::cc_talk::CoinAcceptorError;
     /// assert!(CoinAcceptorError::ValidationTimeout.is_possible_rejection());
     /// assert!(CoinAcceptorError::WakeUpTimeout.is_possible_rejection());
     /// assert!(!CoinAcceptorError::RejectCoin.is_possible_rejection());
@@ -376,7 +376,7 @@ impl CoinAcceptorError {
     /// # Examples
     ///
     /// ```rust
-    /// use no_std_cctalk::cc_talk::CoinAcceptorError;
+    /// use cc_talk_core::cc_talk::CoinAcceptorError;
     /// assert!(CoinAcceptorError::NullEvent.is_null_event());
     /// assert!(!CoinAcceptorError::RejectCoin.is_null_event());
     /// ```
@@ -392,7 +392,7 @@ impl CoinAcceptorError {
     /// # Examples
     ///
     /// ```rust
-    /// use no_std_cctalk::cc_talk::CoinAcceptorError;
+    /// use cc_talk_core::cc_talk::CoinAcceptorError;
     /// assert!(CoinAcceptorError::CoinOnStringMechanism.is_fraud_related());
     /// assert!(CoinAcceptorError::CoinGoingBackwards.is_fraud_related());
     /// assert!(!CoinAcceptorError::ValidationTimeout.is_fraud_related());
@@ -425,7 +425,7 @@ impl CoinAcceptorError {
     /// # Examples
     ///
     /// ```rust
-    /// use no_std_cctalk::cc_talk::CoinAcceptorError;
+    /// use cc_talk_core::cc_talk::CoinAcceptorError;
     /// assert!(CoinAcceptorError::CreditSensorBlocked.is_hardware_issue());
     /// assert!(CoinAcceptorError::MotorException.is_hardware_issue());
     /// assert!(!CoinAcceptorError::RejectCoin.is_hardware_issue());
@@ -453,7 +453,7 @@ impl CoinAcceptorError {
     /// # Examples
     ///
     /// ```rust
-    /// use no_std_cctalk::cc_talk::CoinAcceptorError;
+    /// use cc_talk_core::cc_talk::CoinAcceptorError;
     /// assert!(CoinAcceptorError::AcceptGateNotReady.is_timing_issue());
     /// assert!(CoinAcceptorError::SorterNotReady.is_timing_issue());
     /// assert!(!CoinAcceptorError::RejectCoin.is_timing_issue());
@@ -475,7 +475,7 @@ impl CoinAcceptorError {
     /// # Examples
     ///
     /// ```rust
-    /// use no_std_cctalk::cc_talk::CoinAcceptorError;
+    /// use cc_talk_core::cc_talk::CoinAcceptorError;
     /// let error = CoinAcceptorError::RejectCoin;
     /// assert_eq!(error.description(), "Coin rejected - did not match any programmed coin type");
     /// ```
@@ -590,7 +590,7 @@ impl TryFrom<u8> for CoinAcceptorError {
     ///
     /// ```rust
     /// use std::convert::TryFrom;
-    /// use no_std_cctalk::cc_talk::CoinAcceptorError;
+    /// use cc_talk_core::cc_talk::CoinAcceptorError;
     ///
     /// assert_eq!(CoinAcceptorError::try_from(1), Ok(CoinAcceptorError::RejectCoin));
     /// assert_eq!(CoinAcceptorError::try_from(128), Ok(CoinAcceptorError::InhibitedCoin));
@@ -654,7 +654,7 @@ impl From<CoinAcceptorError> for u8 {
     /// # Examples
     ///
     /// ```rust
-    /// use no_std_cctalk::cc_talk::CoinAcceptorError;
+    /// use cc_talk_core::cc_talk::CoinAcceptorError;
     /// let code: u8 = CoinAcceptorError::RejectCoin.into();
     /// assert_eq!(code, 1);
     /// ```
