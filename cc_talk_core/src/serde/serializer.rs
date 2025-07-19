@@ -1,6 +1,6 @@
 use crate::{
-    Device,
     cc_talk::{Packet, SOURCE_OFFSET},
+    Device,
 };
 
 pub fn serialize<B>(device: &Device, packet: &mut Packet<B>) -> Result<(), SerializationError>
@@ -43,6 +43,7 @@ where
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SerializationError {
     BufferTooSmall,
 }

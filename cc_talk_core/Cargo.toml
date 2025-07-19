@@ -1,7 +1,7 @@
 [package]
 name = "cc_talk_core"
 version = "0.0.1-alpha"
-edition = "2024"
+edition = "2021"
 license = "GPL-3.0-or-later"
 authors = ["Kosta S. <github.operation464@simplelogin.com>"]
 description = "A no-std implementation of the CCtalk protocol."

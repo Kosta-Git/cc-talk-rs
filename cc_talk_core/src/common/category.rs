@@ -82,7 +82,7 @@ impl From<&str> for Category {
     /// # Example
     ///
     /// ```
-    /// use cc_talk_core::Category;
+    /// use no_std_cctalk::Category;
     ///
     /// let category = Category::from("CoinAcceptor");
     /// assert_eq!(category, Category::CoinAcceptor);

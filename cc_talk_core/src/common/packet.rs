@@ -182,7 +182,7 @@ where
         let data_length = self.get_data_length()? as usize;
         let checksum_offset = DATA_OFFSET + data_length;
         if checksum_offset < MAX_BLOCK_LENGTH {
-            Ok(checksum_offset as u8)
+            self.read_byte(checksum_offset)
         } else {
             Err(PacketError::OutOfBounds)
         }

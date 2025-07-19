@@ -1,4 +1,4 @@
-use crate::{ChecksumType, cc_talk::Packet};
+use crate::{cc_talk::Packet, ChecksumType};
 
 /// Deserializes a ccTalk packet and verifies its checksum.
 /// Returns the reply to address if successful, or an error if the checksum is invalid or the
@@ -18,7 +18,10 @@ where
             let expected_checksum = crate::common::checksum::crc8(packet.as_slice());
 
             if checksum != expected_checksum {
-                return Err(DeserializationError::ChecksumMismatch);
+                return Err(DeserializationError::ChecksumMismatch(
+                    expected_checksum as u16,
+                    checksum as u16,
+                ));
             }
 
             Ok(packet
@@ -36,7 +39,10 @@ where
             let checksum = (checksum_msb as u16) << 8 | (checksum_lsb as u16);
             let expected_checksum = crate::common::checksum::crc16(packet.as_slice());
             if checksum != expected_checksum {
-                return Err(DeserializationError::ChecksumMismatch);
+                return Err(DeserializationError::ChecksumMismatch(
+                    expected_checksum,
+                    checksum,
+                ));
             }
 
             Ok(1u8) // Default return address for CRC16
@@ -44,9 +50,29 @@ where
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeserializationError {
     BufferTooSmall,
     InvalidPacket,
     UnsupportedChecksumType,
-    ChecksumMismatch,
+    /// Cehcksum mismatch between the packet and the expected checksum.
+    /// .0 is the expected checksum, .1 is the actual checksum.
+    ChecksumMismatch(u16, u16),
+}
+
+#[cfg(test)]
+mod test {
+    use std::{println, string::String};
+
+    use super::*;
+
+    #[test]
+    fn simple_checksum_verify_test() {
+        let buffer: [u8; 5] = [1, 0, 2, 0, 253];
+        let mut packet = Packet::new(buffer);
+        let result = deserialize(&mut packet, ChecksumType::Crc8);
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 2);
+    }
 }
