@@ -82,9 +82,21 @@ where
         self.read_byte(DESTINATION_OFFSET)
     }
 
+    pub fn set_destination(&mut self, destination: u8) -> Result<(), PacketError> {
+        self.write_byte(DESTINATION_OFFSET, destination)
+    }
+
     /// Returns the expected packet data length.
     pub fn get_data_length(&self) -> Result<u8, PacketError> {
         self.read_byte(DATA_LENGTH_OFFSET)
+    }
+
+    pub fn set_data_length(&mut self, length: u8) -> Result<(), PacketError> {
+        if length as usize + DATA_OFFSET < MAX_BLOCK_LENGTH {
+            self.write_byte(DATA_LENGTH_OFFSET, length)
+        } else {
+            Err(PacketError::DataLengthMismatch)
+        }
     }
 
     /// Returns the ccTalk device source address.
@@ -92,10 +104,18 @@ where
         self.read_byte(SOURCE_OFFSET)
     }
 
+    pub fn set_source(&mut self, source: u8) -> Result<(), PacketError> {
+        self.write_byte(SOURCE_OFFSET, source)
+    }
+
     /// Returns the ccTalk packet header.
     pub fn get_header(&self) -> Result<Header, PacketError> {
         let header_byte = self.read_byte(HEADER_OFFSET)?;
         Header::try_from(header_byte).map_err(|_| PacketError::InvalidHeader(header_byte))
+    }
+
+    pub fn set_header(&mut self, header: Header) -> Result<(), PacketError> {
+        self.write_byte(HEADER_OFFSET, header as u8)
     }
 
     /// Returns the data payload of the packet.
@@ -110,6 +130,54 @@ where
         }
     }
 
+    /// Clears the current data payload of the packet and updates the data length to 0.
+    pub fn clear_data(&mut self) -> Result<(), PacketError> {
+        let current_length = self.get_data_length()?;
+
+        if current_length > 0 {
+            for pos in DATA_OFFSET..(DATA_OFFSET + current_length as usize) {
+                self.write_byte(pos, 0)?;
+            }
+        }
+
+        self.set_data_length(0)?;
+
+        Ok(())
+    }
+
+    /// Clears existing data, updates the checksum offset to 0, and sets new data and updates the
+    /// data length.
+    pub fn set_data(&mut self, data: &[u8]) -> Result<(), PacketError> {
+        // Erase current data before setting new data
+        self.clear_data()?;
+
+        // If the checksum offset is defined, set it to 0
+        if let Ok(offset) = self.get_checksum_offset() {
+            self.write_byte(offset as usize, 0)?;
+        }
+
+        let length = data.len();
+        let start = DATA_OFFSET;
+        let end = DATA_OFFSET + length;
+
+        let mut data_iter = data.iter();
+        for i in start..end {
+            if i >= MAX_BLOCK_LENGTH {
+                return Err(PacketError::OutOfBounds);
+            }
+            if let Some(byte) = data_iter.next() {
+                self.write_byte(i, *byte)?;
+            } else {
+                return Err(PacketError::DataLengthMismatch);
+            }
+        }
+
+        self.set_data_length(length as u8)?;
+
+        Ok(())
+    }
+
+    /// Returns the checksum of the packet.
     pub fn get_checksum(&self) -> Result<u8, PacketError> {
         let data_length = self.get_data_length()? as usize;
         let checksum_offset = DATA_OFFSET + data_length;
@@ -120,6 +188,7 @@ where
         }
     }
 
+    /// Returns the offset where the checksum should be written.
     pub fn get_checksum_offset(&self) -> Result<u8, PacketError> {
         Ok(DATA_OFFSET as u8 + self.get_data_length()?)
     }

@@ -1,4 +1,4 @@
-use crate::{ChecksumType, Device, cc_talk::Packet};
+use crate::{ChecksumType, cc_talk::Packet};
 
 /// Deserializes a ccTalk packet and verifies its checksum.
 /// Returns the reply to address if successful, or an error if the checksum is invalid or the
@@ -29,14 +29,18 @@ where
             let checksum_msb = packet
                 .get_checksum()
                 .map_err(|_| DeserializationError::BufferTooSmall)?;
-            let checksum_msb
+            let checksum_lsb = packet
+                .get_source()
+                .map_err(|_| DeserializationError::BufferTooSmall)?;
 
+            let checksum = (checksum_msb as u16) << 8 | (checksum_lsb as u16);
             let expected_checksum = crate::common::checksum::crc16(packet.as_slice());
             if checksum != expected_checksum {
                 return Err(DeserializationError::ChecksumMismatch);
             }
+
+            Ok(1u8) // Default return address for CRC16
         }
-        _ => return Err(DeserializationError::UnsupportedChecksumType),
     }
 }
 
