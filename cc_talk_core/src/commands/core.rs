@@ -1,4 +1,4 @@
-use crate::{cc_talk::Manufacturer, Category, Header};
+use crate::{cc_talk::Manufacturer, Category};
 
 use super::command::{BelongsTo, Command, CommandSet, ParseResponseError};
 
@@ -53,8 +53,6 @@ impl Command for RequestManufacturerIdCommand {
         &[]
     }
 
-    /// `response_payload` should be an ASCII string, which is an `&[u8]` slice.
-    /// So this just verifies that the response is valid ASCII.
     fn parse_response(
         &self,
         response_payload: &[u8],
@@ -69,8 +67,8 @@ impl Command for RequestManufacturerIdCommand {
 }
 impl BelongsTo<CoreCommandSet> for RequestManufacturerIdCommand {}
 
-pub struct RequestEquipementCategoryId;
-impl Command for RequestEquipementCategoryId {
+pub struct RequestEquipementCategoryIdCommand;
+impl Command for RequestEquipementCategoryIdCommand {
     type Response = Category;
 
     fn header(&self) -> crate::Header {
@@ -93,10 +91,10 @@ impl Command for RequestEquipementCategoryId {
         Ok(Category::from(category_str))
     }
 }
-impl BelongsTo<CoreCommandSet> for RequestEquipementCategoryId {}
+impl BelongsTo<CoreCommandSet> for RequestEquipementCategoryIdCommand {}
 
-pub struct RequestProductCode;
-impl Command for RequestProductCode {
+pub struct RequestProductCodeCommand;
+impl Command for RequestProductCodeCommand {
     type Response = ();
 
     fn header(&self) -> crate::Header {
@@ -117,15 +115,15 @@ impl Command for RequestProductCode {
         response_payload: &[u8],
     ) -> Result<Self::Response, ParseResponseError> {
         if !response_payload.iter().all(|&b| b.is_ascii()) {
-            return Err(ParseResponseError::ParseError("Invalid UTF-8 response"));
+            return Err(ParseResponseError::ParseError("Invalid ASCII response"));
         }
         Ok(())
     }
 }
-impl BelongsTo<CoreCommandSet> for RequestProductCode {}
+impl BelongsTo<CoreCommandSet> for RequestProductCodeCommand {}
 
-pub struct RequestBuildCode;
-impl Command for RequestBuildCode {
+pub struct RequestBuildCodeCommand;
+impl Command for RequestBuildCodeCommand {
     type Response = ();
 
     fn header(&self) -> crate::Header {
@@ -151,11 +149,11 @@ impl Command for RequestBuildCode {
         Ok(())
     }
 }
-impl BelongsTo<CoreCommandSet> for RequestBuildCode {}
+impl BelongsTo<CoreCommandSet> for RequestBuildCodeCommand {}
 
 #[deprecated(note = "This command is not implemented yet.")]
-pub struct RequestEncryptionSupport;
-impl Command for RequestEncryptionSupport {
+pub struct RequestEncryptionSupportCommand;
+impl Command for RequestEncryptionSupportCommand {
     type Response = bool;
 
     fn header(&self) -> crate::Header {
@@ -171,7 +169,7 @@ impl Command for RequestEncryptionSupport {
         todo!("encryption support command not implemented yet")
     }
 }
-impl BelongsTo<CoreCommandSet> for RequestEncryptionSupport {}
+impl BelongsTo<CoreCommandSet> for RequestEncryptionSupportCommand {}
 
 #[cfg(test)]
 mod test {
@@ -217,7 +215,7 @@ mod test {
 
     #[test]
     fn category_id_command() {
-        let cmd = RequestEquipementCategoryId;
+        let cmd = RequestEquipementCategoryIdCommand;
         assert_eq!(cmd.header(), crate::Header::RequestEquipementCategoryId);
         assert!(cmd.data().is_empty());
 
@@ -234,7 +232,7 @@ mod test {
 
     #[test]
     fn product_code() {
-        let cmd = RequestProductCode;
+        let cmd = RequestProductCodeCommand;
         assert_eq!(cmd.header(), crate::Header::RequestProductCode);
         assert!(cmd.data().is_empty());
 
@@ -249,7 +247,7 @@ mod test {
 
     #[test]
     fn request_build_code() {
-        let cmd = RequestBuildCode;
+        let cmd = RequestBuildCodeCommand;
         assert_eq!(cmd.header(), crate::Header::RequestBuildCode);
         assert!(cmd.data().is_empty());
 
@@ -265,7 +263,7 @@ mod test {
     #[test]
     #[should_panic]
     fn request_encryption_support() {
-        let cmd = RequestEncryptionSupport;
+        let cmd = RequestEncryptionSupportCommand;
         assert_eq!(cmd.header(), crate::Header::RequestEncryptionSupport);
         assert_eq!(cmd.data(), &[170, 85, 0, 0, 85, 170]);
 

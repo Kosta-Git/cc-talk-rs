@@ -3,6 +3,7 @@ pub mod category;
 pub mod checksum;
 pub mod coin_acceptor_errors;
 pub mod coin_calibration_codes;
+pub mod date;
 pub mod device;
 pub mod fault_code;
 pub mod hopper_flags;

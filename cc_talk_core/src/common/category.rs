@@ -276,6 +276,36 @@ impl Iterator for AddressIterator {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AddressMode {
+    Other = 0,
+    Flash = 1 << 0,
+    ROM = 1 << 1,
+    EEPROM = 1 << 2,
+    InterfaceConnector = 1 << 3,
+    PCBLink = 1 << 4,
+    Switch = 1 << 5,
+    SerialCommandVolatile = 1 << 6,
+    SerialCommandNonVolatile = 1 << 7,
+}
+
+impl AddressMode {
+    /// Returns the value of the address mode as a u8.
+    pub fn value(&self) -> u8 {
+        match self {
+            AddressMode::Other => 0,
+            AddressMode::Flash => 1,
+            AddressMode::ROM => 2,
+            AddressMode::EEPROM => 4,
+            AddressMode::InterfaceConnector => 8,
+            AddressMode::PCBLink => 16,
+            AddressMode::Switch => 32,
+            AddressMode::SerialCommandVolatile => 64,
+            AddressMode::SerialCommandNonVolatile => 128,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

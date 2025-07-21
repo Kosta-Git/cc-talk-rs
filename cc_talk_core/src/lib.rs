@@ -29,6 +29,7 @@ pub mod cc_talk {
     pub use crate::common::category::*;
     pub use crate::common::checksum::*;
     pub use crate::common::coin_acceptor_errors::*;
+    pub use crate::common::date::*;
     pub use crate::common::device::*;
     pub use crate::common::fault_code::*;
     pub use crate::common::hopper_flags::*;

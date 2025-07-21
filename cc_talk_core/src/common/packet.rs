@@ -479,7 +479,7 @@ pub enum Header {
     /// The device should respond to every status request within 1s despite the heavy
     /// number-crunching.
     /// The host should not attempt any other command until the shared key is ready.
-    ReadDHPK = 235,
+    ReadDHPubKey = 235,
     /// This command is used for Diffie-Hellman key sharing between host and peripheral.
     /// Transmitted data : [ key 1 ] [ key 2 ] [ key 3 ]…
     /// Received data : ACK
@@ -487,7 +487,7 @@ pub enum Header {
     /// first. An ACK is returned immediately and the calculation of a shared key in the
     /// peripheral is then started. The host can use the previous command in a status polling
     /// mode to find out when the calculation is complete, which may be many seconds later.
-    SendDHPK = 234,
+    SendDHPubKey = 234,
     /// Transmitted data : [ bit mask ]
     /// Received data : ACK
     /// Implemented on slave devices which have an output port.
@@ -2543,7 +2543,7 @@ pub enum Header {
     /// This is a response only header
     Busy = 6,
     /// This is a response only header
-    NAK = 5,
+    NACK = 5,
     /// Transmitted data : <none>
     /// Received data : [ release ] [ major revision ] [ minor revision ]
     /// This command requests the ccTalk release number and the major / minor revision
@@ -2634,8 +2634,8 @@ impl TryFrom<u8> for Header {
             238 => Ok(Header::TestOutputLines),
             237 => Ok(Header::ReadInputLines),
             236 => Ok(Header::ReadOptoStates),
-            235 => Ok(Header::ReadDHPK),
-            234 => Ok(Header::SendDHPK),
+            235 => Ok(Header::ReadDHPubKey),
+            234 => Ok(Header::SendDHPubKey),
             233 => Ok(Header::LatchOutputLines),
             232 => Ok(Header::PerformSelfCheck),
             231 => Ok(Header::ModifyInhibitStatus),
@@ -2764,7 +2764,7 @@ impl TryFrom<u8> for Header {
             105 => Ok(Header::DataStream),
             104 => Ok(Header::RequestServiceStatus),
             6 => Ok(Header::Busy),
-            5 => Ok(Header::NAK),
+            5 => Ok(Header::NACK),
             4 => Ok(Header::RequestCommsRevision),
             3 => Ok(Header::ClearCommsStatusVariable),
             2 => Ok(Header::RequestCommsStatusVariables),
