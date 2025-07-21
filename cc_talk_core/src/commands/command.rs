@@ -1,6 +1,8 @@
 use crate::{Category, Header};
 
 /// Defines which command are available to a category.
+/// This trait is an utility design to help users know which commands are available for their
+/// device category.
 pub trait CommandSet {
     /// The name of the command set
     const NAME: &'static str;
@@ -14,30 +16,24 @@ pub trait BelongsTo<CS: CommandSet> {}
 
 /// Base command trait that all commands must implement.
 pub trait Command {
+    type Response;
+
     /// Command header.
     fn header(&self) -> Header;
 
     /// Command data payload.
     fn data(&self) -> &[u8];
+
+    /// Parses the payload of the response.
+    fn parse_response(&self, response_payload: &[u8])
+        -> Result<Self::Response, ParseResponseError>;
 }
 ///
 /// Errors that can occur during command execution
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CommandError {
-    IncompatibleCommandSet {
-        command_set: &'static str,
-        device_category: Category,
-    },
-    CommunicationError(CommunicationError),
-    DeviceError(u8),
+pub enum ParseResponseError {
+    /// The response data length does not match the expected length.
+    /// .0 is expected length, .1 is actual length.
+    DataLengthMismatch(usize, usize),
     ParseError(&'static str),
-    OperationFailed(&'static str),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CommunicationError {
-    Timeout,
-    ChecksumMismatch,
-    InvalidResponse,
-    TransportError,
 }

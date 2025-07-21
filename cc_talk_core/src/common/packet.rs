@@ -10,6 +10,7 @@ pub const HEADER_OFFSET: usize = 3;
 pub const DATA_OFFSET: usize = 4;
 
 /// ccTalk packet structure.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Packet<B> {
     buffer: B,
 }

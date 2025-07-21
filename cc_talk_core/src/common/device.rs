@@ -2,6 +2,7 @@ use crate::{Category, ChecksumType};
 
 /// Represents a ccTalk Device
 /// This can be used to remove some boilerplate when sending packets
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Device {
     address: u8,
     category: Category,

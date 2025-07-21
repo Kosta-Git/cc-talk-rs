@@ -10,6 +10,7 @@ use super::packet::{
 /// [ChecksumType::Crc16].
 ///
 /// A 5 bit checksum is also used for USB full speed, however I never saw it used in practice.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChecksumType {
     Crc8,
     Crc16,

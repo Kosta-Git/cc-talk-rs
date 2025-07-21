@@ -7,7 +7,11 @@ pub fn serialize<B>(device: &Device, packet: &mut Packet<B>) -> Result<(), Seria
 where
     B: AsMut<[u8]> + AsRef<[u8]>,
 {
-    assert!(!device.encrypted());
+    assert!(
+        !device.encrypted(),
+        "encrypted devices are currently not supported."
+    );
+
     match device.checksum_type() {
         crate::ChecksumType::Crc8 => {
             let checksum = crate::common::checksum::crc8(packet.as_slice());
@@ -46,4 +50,21 @@ where
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SerializationError {
     BufferTooSmall,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn simple_checksum_verify_test() {
+        let buffer: [u8; 5] = [1, 0, 2, 0, 0];
+        let mut packet = Packet::new(buffer);
+        let device = Device::new(1, crate::Category::Unknown, crate::ChecksumType::Crc8);
+        let result = serialize(&device, &mut packet);
+
+        assert!(result.is_ok());
+        assert!(packet.get_checksum().is_ok());
+        assert_eq!(packet.get_checksum().unwrap(), 253);
+    }
 }

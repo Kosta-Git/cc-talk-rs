@@ -1,4 +1,5 @@
 /// Bill validator events
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BillEvent {
     /// Bill correctly sent to cashbox/escrow.
     /// Contains the bill type as u8.
@@ -67,6 +68,7 @@ impl BillEvent {
 }
 
 /// Bill event in case the event type is not Credit or PendingCredit.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BillEventReason {
     MasterInhibitActive = 0,
     BillReturnedFromEscrow = 1,
