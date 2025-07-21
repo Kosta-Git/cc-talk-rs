@@ -1,4 +1,4 @@
-use crate::{Category, ChecksumType};
+use crate::{cc_talk::CoreCommandSet, commands::command::BelongsTo, Category, ChecksumType};
 
 /// Represents a ccTalk Device
 /// This can be used to remove some boilerplate when sending packets

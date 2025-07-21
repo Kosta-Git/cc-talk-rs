@@ -36,13 +36,10 @@ pub mod cc_talk {
     pub use crate::common::manufacturers::*;
     pub use crate::common::packet::*;
 
-    pub use crate::commands::bill_validator::*;
-    pub use crate::commands::changer_escrow::*;
-    pub use crate::commands::coin_acceptor::*;
     pub use crate::commands::core::*;
     pub use crate::commands::core_plus::*;
+    pub use crate::commands::device::*;
     pub use crate::commands::multi_drop::*;
-    pub use crate::commands::payout::*;
 
     pub use crate::serde::*;
 }

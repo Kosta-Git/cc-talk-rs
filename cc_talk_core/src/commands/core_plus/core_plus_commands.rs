@@ -1,0 +1,810 @@
+use crate::{
+    cc_talk::{RTBYDate, SerialCode},
+    Category,
+};
+
+use super::{
+    super::command::{BelongsTo, Command, CommandSet, ParseResponseError},
+    CorePlusCommandSet,
+};
+
+pub struct RequestSerialNumberCommand;
+impl Command for RequestSerialNumberCommand {
+    type Response = SerialCode;
+
+    fn header(&self) -> crate::Header {
+        crate::Header::RequestSerialNumber
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Parses the response payload as a serial code.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.len() != 3 {
+            return Err(ParseResponseError::DataLengthMismatch(
+                3,
+                response_payload.len(),
+            ));
+        }
+        Ok(SerialCode::new(
+            response_payload[2],
+            response_payload[1],
+            response_payload[0], // Byte 0 is LSB
+        ))
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for RequestSerialNumberCommand {}
+
+pub struct RequestSoftwareRevisionCommand;
+impl Command for RequestSoftwareRevisionCommand {
+    type Response = ();
+
+    fn header(&self) -> crate::Header {
+        crate::Header::RequestSoftwareRevision
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// The answer to this command is a string, currently the `parse_response` will only check if
+    /// the response is valid UTF-8.
+    ///
+    /// The cast to a valid data type depending on the enviornment (std, heapless, etc.) is left to
+    /// the user.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if !response_payload.iter().all(|&b| b.is_ascii()) {
+            return Err(ParseResponseError::ParseError("Invalid ASCII response"));
+        }
+        Ok(())
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for RequestSoftwareRevisionCommand {}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ReadDHPublicKeyMode {
+    RequestStatus,
+    RequestPublicKey,
+}
+#[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ReadDHPublicKeyCommand {
+    buffer: [u8; 1],
+}
+impl ReadDHPublicKeyCommand {
+    /// Creates a new command to read the Diffie-Hellman public key.
+    ///
+    /// `mode` specifies whether to request the status or the public key.
+    pub fn new(mode: ReadDHPublicKeyMode) -> Self {
+        Self {
+            buffer: [mode as u8],
+        }
+    }
+}
+impl Command for ReadDHPublicKeyCommand {
+    type Response = ();
+
+    fn header(&self) -> crate::Header {
+        crate::Header::ReadDHPubKey
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    /// Parses the response payload as a 32-byte public key.
+    fn parse_response(&self, _: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        todo!("encryption is not supported yet, so this command is not implemented")
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for ReadDHPublicKeyCommand {}
+
+pub struct SendDHPublicKeyCommand<'a> {
+    key: &'a [u8],
+}
+impl<'a> SendDHPublicKeyCommand<'a> {
+    /// Creates a new command to send the Diffie-Hellman public key.
+    ///
+    /// `key` specifies the public key to send.
+    fn new(key: &'a [u8]) -> Self {
+        Self { key }
+    }
+}
+impl Command for SendDHPublicKeyCommand<'_> {
+    type Response = ();
+
+    fn header(&self) -> crate::Header {
+        crate::Header::SendDHPubKey
+    }
+
+    fn data(&self) -> &[u8] {
+        self.key
+    }
+
+    /// Parses the response payload, which is expected to be empty.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if !response_payload.is_empty() {
+            return Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ));
+        }
+        Ok(())
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for SendDHPublicKeyCommand<'_> {}
+
+#[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+pub struct RequestEncryptedProductIdCommand;
+impl BelongsTo<CorePlusCommandSet> for RequestEncryptedProductIdCommand {}
+
+#[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+pub struct RequestACMIEncryptedDataCommand;
+impl BelongsTo<CorePlusCommandSet> for RequestACMIEncryptedDataCommand {}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MemoryType {
+    VolatileOnReset = 0,
+    VolatileOnPowerDown = 1,
+    PermanentLimitedUse = 2,
+    PermanentUnlimitedUse = 3,
+}
+impl TryFrom<u8> for MemoryType {
+    type Error = ParseResponseError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(MemoryType::VolatileOnReset),
+            1 => Ok(MemoryType::VolatileOnPowerDown),
+            2 => Ok(MemoryType::PermanentLimitedUse),
+            3 => Ok(MemoryType::PermanentUnlimitedUse),
+            _ => Err(ParseResponseError::ParseError("Invalid memory type")),
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DataStorage {
+    pub memory_type: MemoryType,
+    pub is_read_available: bool,
+    pub read_blocks: u16,
+    pub read_bytes_per_block: u8,
+    pub is_write_available: bool,
+    pub write_blocks: u16,
+    pub write_bytes_per_block: u8,
+}
+pub struct RequestDataStorageAvailabilityCommand;
+impl Command for RequestDataStorageAvailabilityCommand {
+    type Response = DataStorage;
+
+    fn header(&self) -> crate::Header {
+        crate::Header::RequestDataStorageAvailability
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Parses the data storage availability response.
+    ///
+    /// If read or write is not available, the corresponding blocks and bytes per block will be set
+    /// to 0.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.len() != 5 {
+            return Err(ParseResponseError::DataLengthMismatch(
+                5,
+                response_payload.len(),
+            ));
+        }
+
+        let memory_type = MemoryType::try_from(response_payload[0])?;
+        let is_read_available = response_payload[2] != 0;
+        let is_write_available = response_payload[4] != 0;
+
+        let read_blocks = if is_read_available {
+            match response_payload[1] {
+                0 => 256,
+                n => u16::from(n),
+            }
+        } else {
+            0
+        };
+        let read_bytes_per_block = response_payload[2];
+
+        let write_blocks = if is_write_available {
+            match response_payload[3] {
+                0 => 256,
+                n => u16::from(n),
+            }
+        } else {
+            0
+        };
+        let write_bytes_per_block = response_payload[4];
+
+        Ok(DataStorage {
+            memory_type,
+            is_read_available,
+            read_blocks,
+            read_bytes_per_block,
+            is_write_available,
+            write_blocks,
+            write_bytes_per_block,
+        })
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for RequestDataStorageAvailabilityCommand {}
+
+#[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+pub struct ACMIUnencryptedProductIdCommand;
+impl BelongsTo<CorePlusCommandSet> for ACMIUnencryptedProductIdCommand {}
+
+pub struct CalculateRomChecksumCommand;
+impl Command for CalculateRomChecksumCommand {
+    type Response = u32;
+
+    fn header(&self) -> crate::Header {
+        crate::Header::CalculateROMChecksum
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Parses the response payload as a 4-byte checksum, byte 0 is LSB.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.len() != 4 {
+            return Err(ParseResponseError::DataLengthMismatch(
+                4,
+                response_payload.len(),
+            ));
+        }
+        Ok(u32::from_le_bytes([
+            response_payload[0],
+            response_payload[1],
+            response_payload[2],
+            response_payload[3],
+        ]))
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for CalculateRomChecksumCommand {}
+
+pub struct RequestCreationDateCommand;
+impl Command for RequestCreationDateCommand {
+    type Response = RTBYDate;
+
+    fn header(&self) -> crate::Header {
+        crate::Header::RequestCreationDate
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Parses the response payload, which is expected to be empty.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        parse_rtby_from_payload(response_payload)
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for RequestCreationDateCommand {}
+
+pub struct RequestLastModificationDateCommand;
+impl Command for RequestLastModificationDateCommand {
+    type Response = RTBYDate;
+
+    fn header(&self) -> crate::Header {
+        crate::Header::RequestLastModificationDate
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Parses the response payload, which is expected to be empty.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        parse_rtby_from_payload(response_payload)
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for RequestLastModificationDateCommand {}
+
+fn parse_rtby_from_payload(response_payload: &[u8]) -> Result<RTBYDate, ParseResponseError> {
+    if response_payload.len() != 2 {
+        return Err(ParseResponseError::DataLengthMismatch(
+            2,
+            response_payload.len(),
+        ));
+    }
+    let date_code = u16::from_le_bytes([response_payload[0], response_payload[1]]);
+    Ok(RTBYDate::new(date_code))
+}
+
+pub struct RequestBaseYearCommand;
+impl Command for RequestBaseYearCommand {
+    type Response = u16;
+
+    fn header(&self) -> crate::Header {
+        crate::Header::RequestBaseYear
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Parses the response payload as a u16 value, which represents the base year.
+    ///
+    /// The original response is in ASCII.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.len() != 4 {
+            return Err(ParseResponseError::DataLengthMismatch(
+                4,
+                response_payload.len(),
+            ));
+        }
+
+        if response_payload.iter().any(|&byte| !byte.is_ascii_digit()) {
+            return Err(ParseResponseError::ParseError("Invalid base year response"));
+        }
+
+        response_payload
+            .iter()
+            .enumerate()
+            .try_fold(0u16, |acc, (i, &byte)| {
+                let numeric_value = (byte - b'0') as u16;
+                Ok(acc + (numeric_value * 10u16.pow(3 - i as u32)))
+            })
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for RequestBaseYearCommand {}
+
+pub struct RequestAddressModeCommand;
+impl Command for RequestAddressModeCommand {
+    type Response = u8;
+
+    fn header(&self) -> crate::Header {
+        crate::Header::RequestAddressMode
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Parses the response payload as a single byte representing the address mode.
+    /// Refer to the header documentation for details on the address modes.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.len() != 1 {
+            return Err(ParseResponseError::DataLengthMismatch(
+                1,
+                response_payload.len(),
+            ));
+        }
+        Ok(response_payload[0])
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for RequestAddressModeCommand {}
+
+#[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+pub struct SwitchEncryptionCodeCommand;
+impl BelongsTo<CorePlusCommandSet> for SwitchEncryptionCodeCommand {}
+
+#[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+pub struct StoreEncryptionCodeCommand;
+impl BelongsTo<CorePlusCommandSet> for StoreEncryptionCodeCommand {}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct UsbInfo {
+    pub vendor_id: u16,
+    pub product_id: u16,
+}
+pub struct RequestUsbIdCommand;
+impl Command for RequestUsbIdCommand {
+    type Response = UsbInfo;
+
+    fn header(&self) -> crate::Header {
+        crate::Header::RequestUsbId
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Parses the response payload as a USB vendor and product ID.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.len() != 4 {
+            return Err(ParseResponseError::DataLengthMismatch(
+                4,
+                response_payload.len(),
+            ));
+        }
+        Ok(UsbInfo {
+            vendor_id: u16::from_le_bytes([response_payload[0], response_payload[1]]),
+            product_id: u16::from_le_bytes([response_payload[2], response_payload[3]]),
+        })
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for RequestUsbIdCommand {}
+
+/// Represents the status of a baud rate switch command.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BaudRateSwitchStatus {
+    ShouldBeAckOrNack,
+    BaudRateCode(u8),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BaudRateOperation {
+    RequestBaudRateInUse = 0,
+    SwitchBaudRateToNewValue = 1,
+    RequestMaximumBaudRateSupported = 2,
+    RequestSupportForNewBaudRate = 3,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BaudRateCode {
+    Rate4800 = 0,
+    Rate9600 = 1,
+    Rate19200 = 2,
+    Rate38400 = 3,
+    Rate57600 = 4,
+    Rate115200 = 5,
+    Rate230400 = 6,
+    Rate460800 = 7,
+    Rate921600 = 8,
+    Rate1000000 = 10,
+    Rate1843200 = 18,
+    Rate2000000 = 20,
+    Rate3000000 = 30,
+}
+
+/// This command returns different status depending on the flow
+/// Please read the documentation of the command for more details.
+/// As switching baud rate is a quite involved process with pitfalls.
+pub struct SwitchBaudRateCommand {
+    buffer: [u8; 2],
+}
+impl SwitchBaudRateCommand {
+    /// Creates a new command to switch the baud rate.
+    ///
+    /// `operation` specifies the operation to perform, such as requesting the current baud rate,
+    /// switching to a new baud rate, or checking support for a new baud rate.
+    ///
+    /// `code` specifies the baud rate code to switch to or check support for.
+    pub fn new(operation: BaudRateOperation, code: BaudRateCode) -> Self {
+        Self {
+            buffer: [operation as u8, code as u8],
+        }
+    }
+}
+impl Command for SwitchBaudRateCommand {
+    type Response = BaudRateSwitchStatus;
+
+    fn header(&self) -> crate::Header {
+        crate::Header::SwitchBaudRate
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    /// Parses the response payload, which is expected to be empty.
+    /// If the response is [BaudRateSwitchStatus::ShouldBeAckOrNack] please verify that the command
+    /// header is NACK or ACK.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(BaudRateSwitchStatus::ShouldBeAckOrNack),
+            1 => Ok(BaudRateSwitchStatus::BaudRateCode(response_payload[0])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0, // Technically could be 1 as well
+                response_payload.len(),
+            )),
+        }
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for SwitchBaudRateCommand {}
+
+#[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+pub struct SwitchEncryptionKeyCommand;
+impl BelongsTo<CorePlusCommandSet> for SwitchEncryptionKeyCommand {}
+
+#[derive(Debug, Eq, PartialEq)] // TODO: see if copy and clone here would cause issues
+pub struct DataStreamCommand<'a> {
+    buffer: &'a [u8],
+}
+impl<'a> DataStreamCommand<'a> {
+    /// Creates a new data stream command with the specified data.
+    pub fn new(data: &'a [u8]) -> Self {
+        Self { buffer: data }
+    }
+}
+impl Command for DataStreamCommand<'_> {
+    type Response = ();
+
+    fn header(&self) -> crate::Header {
+        crate::Header::DataStream
+    }
+
+    fn data(&self) -> &[u8] {
+        self.buffer
+    }
+
+    /// Does nothing as this is used for custom data streams.
+    fn parse_response(&self, _: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        Ok(())
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for DataStreamCommand<'_> {}
+
+pub struct BusyCommand;
+impl Command for BusyCommand {
+    type Response = ();
+
+    fn header(&self) -> crate::Header {
+        crate::Header::Busy
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Busy is a response, so this should really never be called.
+    fn parse_response(&self, _: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        Ok(())
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for BusyCommand {}
+
+pub struct NackCommand;
+impl Command for NackCommand {
+    type Response = ();
+
+    fn header(&self) -> crate::Header {
+        crate::Header::NACK
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// NACK is a response, so this should really never be called.
+    fn parse_response(&self, _: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        Ok(())
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for NackCommand {}
+
+pub struct RequestCommsRevisionCommand;
+impl Command for RequestCommsRevisionCommand {
+    type Response = (u8, u8, u8);
+
+    fn header(&self) -> crate::Header {
+        crate::Header::RequestCommsRevision
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Parses the response payload as a tuple of three bytes representing the communication
+    /// revision.
+    ///
+    /// (release, major, minor)
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.len() != 3 {
+            return Err(ParseResponseError::DataLengthMismatch(
+                3,
+                response_payload.len(),
+            ));
+        }
+        Ok((
+            response_payload[0],
+            response_payload[1],
+            response_payload[2],
+        ))
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for RequestCommsRevisionCommand {}
+
+pub struct ResetDeviceCommand;
+impl Command for ResetDeviceCommand {
+    type Response = ();
+
+    fn header(&self) -> crate::Header {
+        crate::Header::ResetDevice
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Parses the response payload, which is expected to be empty.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if !response_payload.is_empty() {
+            return Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ));
+        }
+        Ok(())
+    }
+}
+impl BelongsTo<CorePlusCommandSet> for ResetDeviceCommand {}
+
+#[cfg(test)]
+mod test {
+    use crate::Header;
+
+    use super::*;
+
+    #[test]
+    fn request_valid_serial_number() {
+        use super::RequestSerialNumberCommand;
+        use crate::cc_talk::SerialCode;
+
+        let command = RequestSerialNumberCommand;
+        let response = command.parse_response(&[0, 0, 1]).unwrap();
+        assert_eq!(response, SerialCode::new(1, 0, 0));
+        assert_eq!(response.as_number(), 65536);
+    }
+
+    #[test]
+    fn request_software_revision() {
+        let command = RequestSoftwareRevisionCommand;
+        let response = command.parse_response(b"v1.0.0");
+        assert!(response.is_ok());
+    }
+
+    #[test]
+    fn data_storage_availability() {
+        let command = RequestDataStorageAvailabilityCommand;
+        let response = command.parse_response(&[0, 1, 2, 3, 4]).unwrap();
+        assert_eq!(
+            response,
+            DataStorage {
+                memory_type: MemoryType::VolatileOnReset,
+                is_read_available: true,
+                read_blocks: 1,
+                read_bytes_per_block: 2,
+                is_write_available: true,
+                write_blocks: 3,
+                write_bytes_per_block: 4
+            }
+        );
+    }
+
+    #[test]
+    fn data_storage_not_available() {
+        let command = RequestDataStorageAvailabilityCommand;
+        let response = command.parse_response(&[3, 255, 0, 50, 0]).unwrap();
+        assert_eq!(
+            response,
+            DataStorage {
+                memory_type: MemoryType::PermanentUnlimitedUse,
+                is_read_available: false,
+                read_blocks: 0,
+                read_bytes_per_block: 0,
+                is_write_available: false,
+                write_blocks: 0,
+                write_bytes_per_block: 0
+            }
+        );
+    }
+
+    #[test]
+    fn calculate_rom_checksum() {
+        let command = CalculateRomChecksumCommand;
+        let response = command.parse_response(&[0, 1, 2, 3]).unwrap();
+        assert_eq!(response, 0x03020100);
+    }
+
+    #[test]
+    fn request_creation_date() {
+        let command = RequestCreationDateCommand;
+        assert_eq!(command.header(), Header::RequestCreationDate);
+        assert!(command.parse_response(&[0, 1]).is_ok());
+    }
+
+    #[test]
+    fn request_last_modification_date() {
+        let command = RequestLastModificationDateCommand;
+        assert_eq!(command.header(), Header::RequestLastModificationDate);
+        assert!(command.parse_response(&[0, 1]).is_ok());
+    }
+
+    #[test]
+    fn request_base_year() {
+        let command = RequestBaseYearCommand;
+        assert_eq!(command.header(), Header::RequestBaseYear);
+
+        let base_year = "4269";
+        let parse_result = command.parse_response(base_year.as_bytes());
+        assert!(parse_result.is_ok());
+    }
+
+    #[test]
+    fn request_base_year_works_with_all_base_year() {
+        for i in 0..=9999 {
+            let command = RequestBaseYearCommand;
+            let base_year = std::format!("{:04}", i);
+            let parse_result = command.parse_response(base_year.as_bytes());
+            assert!(parse_result.is_ok(), "Failed for base year: {}", i);
+            assert_eq!(
+                parse_result.unwrap(),
+                i as u16,
+                "Failed for base year: {}",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn character_invalidates_base_year() {
+        let command = RequestBaseYearCommand;
+        let invalid_base_year = "42a9";
+        let parse_result = command.parse_response(invalid_base_year.as_bytes());
+        assert!(
+            parse_result.is_err(),
+            "Expected error for invalid base year"
+        );
+    }
+
+    #[test]
+    fn switch_baud_rate_command() {
+        let command = SwitchBaudRateCommand::new(
+            BaudRateOperation::SwitchBaudRateToNewValue,
+            BaudRateCode::Rate115200,
+        );
+        assert_eq!(command.header(), Header::SwitchBaudRate);
+        assert_eq!(command.data(), &[1, 5]);
+        let response = command.parse_response(&[1]);
+        assert!(response.is_ok());
+        assert_eq!(response.unwrap(), BaudRateSwitchStatus::BaudRateCode(1));
+    }
+
+    #[test]
+    fn test_data_stream() {
+        let command = DataStreamCommand::new(&[1, 2, 3, 4]);
+        assert_eq!(command.header(), Header::DataStream);
+        assert_eq!(command.data(), &[1, 2, 3, 4]);
+
+        let response = command.parse_response(&[]);
+        assert!(response.is_ok());
+    }
+}
