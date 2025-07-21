@@ -36,4 +36,6 @@ pub enum ParseResponseError {
     /// .0 is expected length, .1 is actual length.
     DataLengthMismatch(usize, usize),
     ParseError(&'static str),
+    /// Buffer is too small to hold the response data.
+    BufferTooSmall,
 }
