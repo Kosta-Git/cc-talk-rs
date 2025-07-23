@@ -7,7 +7,7 @@ pub fn serialize<B>(device: &Device, packet: &mut Packet<B>) -> Result<(), Seria
 where
     B: AsMut<[u8]> + AsRef<[u8]>,
 {
-    crate::log::assert!(
+    assert!(
         !device.encrypted(),
         "encrypted devices are currently not supported."
     );

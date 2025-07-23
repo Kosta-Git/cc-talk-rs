@@ -231,19 +231,3 @@ impl<'a> defmt::Format for Bytes<'a> {
         defmt::write!(fmt, "{:02x}", self.0)
     }
 }
-
-pub(crate) use _warn as warn;
-pub(crate) use assert;
-pub(crate) use assert_eq;
-pub(crate) use assert_ne;
-pub(crate) use debug;
-pub(crate) use debug_assert;
-pub(crate) use debug_assert_eq;
-pub(crate) use debug_assert_ne;
-pub(crate) use error;
-pub(crate) use info;
-pub(crate) use panic;
-pub(crate) use todo;
-pub(crate) use trace;
-pub(crate) use unreachable;
-pub(crate) use unwrap;

@@ -1,5 +1,5 @@
 use crate::{
-    cc_talk::{RTBYDate, SerialCode},
+    cc_talk::{DataStorage, MemoryType, RTBYDate, SerialCode},
     Category,
 };
 
@@ -153,36 +153,6 @@ impl BelongsTo<CorePlusCommandSet> for RequestEncryptedProductIdCommand {}
 pub struct RequestACMIEncryptedDataCommand;
 impl BelongsTo<CorePlusCommandSet> for RequestACMIEncryptedDataCommand {}
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum MemoryType {
-    VolatileOnReset = 0,
-    VolatileOnPowerDown = 1,
-    PermanentLimitedUse = 2,
-    PermanentUnlimitedUse = 3,
-}
-impl TryFrom<u8> for MemoryType {
-    type Error = ParseResponseError;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(MemoryType::VolatileOnReset),
-            1 => Ok(MemoryType::VolatileOnPowerDown),
-            2 => Ok(MemoryType::PermanentLimitedUse),
-            3 => Ok(MemoryType::PermanentUnlimitedUse),
-            _ => Err(ParseResponseError::ParseError("Invalid memory type")),
-        }
-    }
-}
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct DataStorage {
-    pub memory_type: MemoryType,
-    pub is_read_available: bool,
-    pub read_blocks: u16,
-    pub read_bytes_per_block: u8,
-    pub is_write_available: bool,
-    pub write_blocks: u16,
-    pub write_bytes_per_block: u8,
-}
 pub struct RequestDataStorageAvailabilityCommand;
 impl Command for RequestDataStorageAvailabilityCommand {
     type Response = DataStorage;
@@ -209,40 +179,13 @@ impl Command for RequestDataStorageAvailabilityCommand {
                 response_payload.len(),
             ));
         }
-
-        let memory_type = MemoryType::try_from(response_payload[0])?;
-        let is_read_available = response_payload[2] != 0;
-        let is_write_available = response_payload[4] != 0;
-
-        let read_blocks = if is_read_available {
-            match response_payload[1] {
-                0 => 256,
-                n => u16::from(n),
-            }
-        } else {
-            0
-        };
-        let read_bytes_per_block = response_payload[2];
-
-        let write_blocks = if is_write_available {
-            match response_payload[3] {
-                0 => 256,
-                n => u16::from(n),
-            }
-        } else {
-            0
-        };
-        let write_bytes_per_block = response_payload[4];
-
-        Ok(DataStorage {
-            memory_type,
-            is_read_available,
-            read_blocks,
-            read_bytes_per_block,
-            is_write_available,
-            write_blocks,
-            write_bytes_per_block,
-        })
+        Ok(DataStorage::from([
+            response_payload[0],
+            response_payload[1],
+            response_payload[2],
+            response_payload[3],
+            response_payload[4],
+        ]))
     }
 }
 impl BelongsTo<CorePlusCommandSet> for RequestDataStorageAvailabilityCommand {}
@@ -699,10 +642,8 @@ mod test {
             response,
             DataStorage {
                 memory_type: MemoryType::VolatileOnReset,
-                is_read_available: true,
                 read_blocks: 1,
                 read_bytes_per_block: 2,
-                is_write_available: true,
                 write_blocks: 3,
                 write_bytes_per_block: 4
             }
@@ -717,10 +658,8 @@ mod test {
             response,
             DataStorage {
                 memory_type: MemoryType::PermanentUnlimitedUse,
-                is_read_available: false,
                 read_blocks: 0,
                 read_bytes_per_block: 0,
-                is_write_available: false,
                 write_blocks: 0,
                 write_bytes_per_block: 0
             }

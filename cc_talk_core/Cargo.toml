@@ -21,3 +21,6 @@ log = ["dep:log"]
 log = { version = "0.4.27", optional = true }
 heapless = { version = "0.8.0" }
 defmt = { version = "1.0.1", optional = true }
+
+[dev-dependencies]
+env_logger = "0.11.8"

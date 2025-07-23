@@ -4,6 +4,7 @@ pub mod checksum;
 pub mod coin_acceptor_errors;
 pub mod coin_calibration_codes;
 pub mod coin_event;
+pub mod data_storage;
 pub mod date;
 pub mod device;
 pub mod fault_code;
