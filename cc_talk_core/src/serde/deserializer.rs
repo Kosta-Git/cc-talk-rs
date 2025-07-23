@@ -51,6 +51,8 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub enum DeserializationError {
     BufferTooSmall,
     InvalidPacket,
@@ -58,6 +60,23 @@ pub enum DeserializationError {
     /// Cehcksum mismatch between the packet and the expected checksum.
     /// .0 is the expected checksum, .1 is the actual checksum.
     ChecksumMismatch(u16, u16),
+}
+
+impl core::fmt::Display for DeserializationError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            DeserializationError::BufferTooSmall => write!(f, "Buffer too small"),
+            DeserializationError::InvalidPacket => write!(f, "Invalid packet"),
+            DeserializationError::UnsupportedChecksumType => write!(f, "Unsupported checksum type"),
+            DeserializationError::ChecksumMismatch(expected, actual) => {
+                write!(
+                    f,
+                    "Checksum mismatch: expected {}, got {}",
+                    expected, actual
+                )
+            }
+        }
+    }
 }
 
 #[cfg(test)]

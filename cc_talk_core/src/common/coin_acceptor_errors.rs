@@ -34,6 +34,8 @@
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub enum CoinAcceptorError {
     /// No error occurred (code 0)
     ///

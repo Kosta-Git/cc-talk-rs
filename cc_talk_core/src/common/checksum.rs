@@ -11,6 +11,8 @@ use super::packet::{
 ///
 /// A 5 bit checksum is also used for USB full speed, however I never saw it used in practice.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub enum ChecksumType {
     Crc8,
     Crc16,

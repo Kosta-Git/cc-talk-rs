@@ -1,5 +1,7 @@
 /// Bill validator events
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub enum BillEvent {
     /// Bill correctly sent to cashbox/escrow.
     /// Contains the bill type as u8.
@@ -15,6 +17,19 @@ pub enum BillEvent {
     FatalError(BillEventReason),
     /// General status update, reason as [crate::common::bill_event_types::BillEvent].
     Status(BillEventReason),
+}
+
+impl core::fmt::Display for BillEvent {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            BillEvent::Credit(bill_type) => write!(f, "Credit: {}", bill_type),
+            BillEvent::PendingCredit(bill_type) => write!(f, "Pending Credit: {}", bill_type),
+            BillEvent::Reject(reason) => write!(f, "Reject: {}", reason),
+            BillEvent::FraudAttempt(reason) => write!(f, "Fraud Attempt: {}", reason),
+            BillEvent::FatalError(reason) => write!(f, "Fatal Error: {}", reason),
+            BillEvent::Status(reason) => write!(f, "Status: {}", reason),
+        }
+    }
 }
 
 impl BillEvent {
@@ -69,6 +84,8 @@ impl BillEvent {
 
 /// Bill event in case the event type is not Credit or PendingCredit.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub enum BillEventReason {
     MasterInhibitActive = 0,
     BillReturnedFromEscrow = 1,
@@ -92,4 +109,41 @@ pub enum BillEventReason {
     AntiStringMechanismFaulty = 19,
     BarCodeDetected = 20,
     UnknownBillTypeStacked = 21,
+}
+
+impl core::fmt::Display for BillEventReason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            BillEventReason::MasterInhibitActive => write!(f, "Master inhibit active"),
+            BillEventReason::BillReturnedFromEscrow => write!(f, "Bill returned from escrow"),
+            BillEventReason::InvalidBillValidationFailed => {
+                write!(f, "Invalid bill validation failed")
+            }
+            BillEventReason::InvalidBillTransportFailed => {
+                write!(f, "Invalid bill transport failed")
+            }
+            BillEventReason::InhibitedBillViaSerial => write!(f, "Inhibited bill via serial"),
+            BillEventReason::InhibitedBillViaDipSwitch => {
+                write!(f, "Inhibited bill via dip switch")
+            }
+            BillEventReason::BillJammedInTrasport => write!(f, "Bill jammed in transport"),
+            BillEventReason::BillJammedInStacker => write!(f, "Bill jammed in stacker"),
+            BillEventReason::BillPulledBackwards => write!(f, "Bill pulled backwards"),
+            BillEventReason::BillTamper => write!(f, "Bill tamper detected"),
+            BillEventReason::StackerOk => write!(f, "Stacker ok"),
+            BillEventReason::StackerRemoved => write!(f, "Stacker removed"),
+            BillEventReason::StackerInserted => write!(f, "Stacker inserted"),
+            BillEventReason::StackerFaulty => write!(f, "Stacker faulty"),
+            BillEventReason::StackerFull => write!(f, "Stacker full"),
+            BillEventReason::StackerJammed => write!(f, "Stacker jammed"),
+            BillEventReason::BillJammedInTransportSafe => {
+                write!(f, "Bill jammed in transport safe")
+            }
+            BillEventReason::OptoFraudDetected => write!(f, "Opto fraud detected"),
+            BillEventReason::StringFraudDetected => write!(f, "String fraud detected"),
+            BillEventReason::AntiStringMechanismFaulty => write!(f, "Anti-string mechanism faulty"),
+            BillEventReason::BarCodeDetected => write!(f, "Bar code detected"),
+            BillEventReason::UnknownBillTypeStacked => write!(f, "Unknown bill type stacked"),
+        }
+    }
 }

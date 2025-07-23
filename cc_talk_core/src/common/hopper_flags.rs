@@ -7,6 +7,8 @@ const REGISTER_3_MASK: u16 = 512;
 /// Represents all the possible flags when testing a hopper.
 #[repr(u16)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub enum HopperFlag {
     // Register 1 starts at 0b00_00000001 == 1
     /// Payout stopped because a maximum threshold current was exceeded. This is the
@@ -448,7 +450,7 @@ mod tests {
 
     #[test]
     fn test_parse_all_registers_flags() {
-        let registers = &[255, 255, 255]; // All flags 
+        let registers = &[255, 255, 255]; // All flags
         let (_, count) = HopperFlag::parse_hopper_flags_array(registers);
         assert_eq!(count, 21); // All flags
     }

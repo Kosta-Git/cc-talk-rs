@@ -1,5 +1,8 @@
 /// Struct for the special Money Controls format Relative To Base Year Date (RTBYDate).
 /// Originally chosen to avoid the Y2K problem
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub struct RTBYDate {
     date: u16,
 }

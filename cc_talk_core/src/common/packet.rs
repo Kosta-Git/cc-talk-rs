@@ -11,6 +11,8 @@ pub const DATA_OFFSET: usize = 4;
 
 /// ccTalk packet structure.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub struct Packet<B> {
     buffer: B,
 }
@@ -36,7 +38,7 @@ where
     /// let mut packet = Packet::new(buffer);
     ///
     /// // Using heapless
-    /// let buffer =  heapless::Vec::<u8, 265>::new();
+    /// let buffer =  heapless::Vec::<u8, MAX_BLOCK_LENGTH>::new();
     /// let mut packet = Packet::new(buffer);
     /// ```
     pub fn new(buffer: B) -> Self {
@@ -57,6 +59,10 @@ where
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    pub fn get_logical_size(&self) -> usize {
+        5 + self.get_data_length().unwrap_or(0) as usize
     }
 
     pub fn write_byte(&mut self, pos: usize, byte: u8) -> Result<(), PacketError> {

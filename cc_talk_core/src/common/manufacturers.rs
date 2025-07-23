@@ -7,6 +7,8 @@
 /// BNVs (Bill Note Validators) are expected to reply with abbreviated names.
 /// Other peripherals may return a full name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub enum Manufacturer {
     /// Aardvark Embedded Solutions Ltd (AES)
     AardvarkEmbeddedSolutions,
@@ -240,14 +242,11 @@ pub enum ManufacturerIdentifier {
     ///
     /// This allows for new manufacturers that haven't been registered yet
     /// or custom manufacturer strings.
-    #[cfg(feature = "heapless")]
+    #[cfg(not(feature = "std"))]
     Unknown(heapless::String<64>), // Using heapless for no_std compatibility
 
-    #[cfg(all(feature = "std", not(feature = "heapless")))]
+    #[cfg(feature = "std")]
     Unknown(std::string::String), // Using std::String when available
-
-    #[cfg(not(any(feature = "heapless", feature = "std")))]
-    Unknown(&'static str), // Fallback to static string when no dynamic allocation is available
 }
 
 impl ManufacturerIdentifier {
@@ -259,7 +258,7 @@ impl ManufacturerIdentifier {
         match Manufacturer::from_name(name) {
             Some(manufacturer) => ManufacturerIdentifier::Known(manufacturer),
             None => {
-                #[cfg(feature = "heapless")]
+                #[cfg(not(feature = "std"))]
                 {
                     match heapless::String::try_from(name) {
                         Ok(unknown) => ManufacturerIdentifier::Unknown(unknown),
@@ -272,29 +271,12 @@ impl ManufacturerIdentifier {
                         }
                     }
                 }
-                #[cfg(all(feature = "std", not(feature = "heapless")))]
+                #[cfg(feature = "std")]
                 {
+                    use std::string::ToString;
                     ManufacturerIdentifier::Unknown(name.to_string())
                 }
-                #[cfg(not(any(feature = "heapless", feature = "std")))]
-                {
-                    // In this case, we can only store static strings
-                    // This is a limitation when no dynamic allocation is available
-                    ManufacturerIdentifier::Unknown("")
-                }
             }
-        }
-    }
-
-    /// Creates a new manufacturer identifier from a static string
-    ///
-    /// This method is useful when you have a static string and want to avoid
-    /// potential allocation or truncation issues.
-    #[cfg(not(any(feature = "heapless", feature = "std")))]
-    pub fn new_static(name: &'static str) -> Self {
-        match Manufacturer::from_name(name) {
-            Some(manufacturer) => ManufacturerIdentifier::Known(manufacturer),
-            None => ManufacturerIdentifier::Unknown(name),
         }
     }
 
@@ -302,16 +284,7 @@ impl ManufacturerIdentifier {
     pub fn name(&self) -> &str {
         match self {
             ManufacturerIdentifier::Known(manufacturer) => manufacturer.full_name(),
-            ManufacturerIdentifier::Unknown(name) => {
-                #[cfg(any(feature = "std", feature = "heapless"))]
-                {
-                    name.as_str()
-                }
-                #[cfg(not(any(feature = "heapless", feature = "std")))]
-                {
-                    name
-                }
-            }
+            ManufacturerIdentifier::Unknown(name) => name.as_str(),
         }
     }
 

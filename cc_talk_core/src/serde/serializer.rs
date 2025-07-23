@@ -7,7 +7,7 @@ pub fn serialize<B>(device: &Device, packet: &mut Packet<B>) -> Result<(), Seria
 where
     B: AsMut<[u8]> + AsRef<[u8]>,
 {
-    assert!(
+    crate::log::assert!(
         !device.encrypted(),
         "encrypted devices are currently not supported."
     );
@@ -48,8 +48,18 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub enum SerializationError {
     BufferTooSmall,
+}
+
+impl core::fmt::Display for SerializationError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SerializationError::BufferTooSmall => write!(f, "Buffer too small for serialization"),
+        }
+    }
 }
 
 #[cfg(test)]

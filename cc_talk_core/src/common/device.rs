@@ -3,6 +3,8 @@ use crate::{cc_talk::CoreCommandSet, commands::command::BelongsTo, Category, Che
 /// Represents a ccTalk Device
 /// This can be used to remove some boilerplate when sending packets
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub struct Device {
     address: u8,
     category: Category,
@@ -44,6 +46,8 @@ impl Device {
 
 /// Represents the device serial number.
 #[derive(Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub struct SerialCode(u8, u8, u8);
 impl SerialCode {
     /// Creates a new serial code.

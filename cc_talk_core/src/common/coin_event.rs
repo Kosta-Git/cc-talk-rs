@@ -1,6 +1,8 @@
 use crate::CoinAcceptorError;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub enum SorterPath {
     NotSupported,
     Path(u8),
@@ -17,12 +19,16 @@ impl TryFrom<u8> for SorterPath {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub struct CoinCredit {
     pub credit: u8,
     pub sorter_path: SorterPath,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg(feature = "defmt")]
+#[derive(defmt::Format)]
 pub enum CoinEvent {
     Error(CoinAcceptorError),
     Credit(CoinCredit),

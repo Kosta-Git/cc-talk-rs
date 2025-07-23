@@ -5,6 +5,7 @@ extern crate std;
 
 mod commands;
 mod common;
+mod log;
 mod serde;
 
 pub use common::bill_event_types::BillEvent;
