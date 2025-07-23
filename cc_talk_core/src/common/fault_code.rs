@@ -7,8 +7,7 @@
 /// a fault is detected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum FaultCode {
     /// No fault detected - normal operating condition
     Ok = 0,
@@ -487,8 +486,7 @@ impl From<FaultCode> for u8 {
 /// Returned when attempting to convert a u8 value that doesn't correspond
 /// to a valid ccTalk fault code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct InvalidFaultCode(pub u8);
 
 impl core::fmt::Display for InvalidFaultCode {
@@ -502,8 +500,7 @@ impl core::fmt::Display for InvalidFaultCode {
 /// Some fault codes can include an additional byte of information to provide
 /// more specific details about the fault condition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Fault {
     pub code: FaultCode,
     pub extra_info: Option<u8>,

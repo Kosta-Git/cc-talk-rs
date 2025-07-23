@@ -24,6 +24,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cc_talk_device"
+version = "0.1.0"
+dependencies = [
+ "cc_talk_core",
+ "defmt",
+ "heapless",
+ "log",
+]
+
+[[package]]
 name = "defmt"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

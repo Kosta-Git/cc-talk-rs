@@ -8,8 +8,7 @@
 /// but is implied as the successful response when no error occurs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum CoinCalibrationReplyCode {
     /// Calibration completed successfully (implied)
     ///
@@ -188,8 +187,7 @@ impl core::fmt::Display for CoinCalibrationReplyCode {
 /// Returned when attempting to convert a u8 value that doesn't correspond
 /// to a valid ccTalk coin calibration reply code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct InvalidCalibrationReplyCode(pub u8);
 
 impl core::fmt::Display for InvalidCalibrationReplyCode {

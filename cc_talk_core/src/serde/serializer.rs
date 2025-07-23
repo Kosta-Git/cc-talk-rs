@@ -48,8 +48,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum SerializationError {
     BufferTooSmall,
 }

@@ -7,8 +7,7 @@ const REGISTER_3_MASK: u16 = 512;
 /// Represents all the possible flags when testing a hopper.
 #[repr(u16)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum HopperFlag {
     // Register 1 starts at 0b00_00000001 == 1
     /// Payout stopped because a maximum threshold current was exceeded. This is the
@@ -176,7 +175,6 @@ impl HopperFlag {
     /// # Panics
     ///
     /// It will panic if the length of `registers` is not 0, 1, 2, or 3.
-    #[cfg(feature = "heapless")]
     pub fn parse_hopper_flags_heapless(registers: &[u8]) -> heapless::Vec<HopperFlag, 21> {
         assert!(
             (0..=3).contains(&registers.len()),
@@ -410,7 +408,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "heapless")]
     fn test_parse_multiple_registers() {
         let registers = &[0b00000001, 0b00000010, 0b00000100]; // One flag in each register
         let (flags, count) = HopperFlag::parse_hopper_flags_array(registers);
@@ -498,7 +495,6 @@ mod tests {
         assert_eq!(HopperFlag::u16_to_hopper_flag(0), None);
     }
 
-    #[cfg(feature = "heapless")]
     #[test]
     fn test_parse_with_heapless() {
         let registers = &[0b00000011]; // First two flags in register 1
@@ -508,7 +504,6 @@ mod tests {
         assert_eq!(flags[1], HopperFlag::PayoutTimeoutOccurred);
     }
 
-    #[cfg(feature = "heapless")]
     #[test]
     fn test_parse_multi_with_heapless() {
         let registers = &[255, 255, 255]; // All flags

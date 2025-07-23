@@ -11,8 +11,7 @@ pub const DATA_OFFSET: usize = 4;
 
 /// ccTalk packet structure.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Packet<B> {
     buffer: B,
 }

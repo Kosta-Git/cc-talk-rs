@@ -7,8 +7,7 @@
 /// BNVs (Bill Note Validators) are expected to reply with abbreviated names.
 /// Other peripherals may return a full name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Manufacturer {
     /// Aardvark Embedded Solutions Ltd (AES)
     AardvarkEmbeddedSolutions,
@@ -384,18 +383,8 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "heapless", feature = "std"))]
     fn test_manufacturer_identifier_unknown() {
         let id = ManufacturerIdentifier::new("Custom Manufacturer");
-        assert!(!id.is_known());
-        assert_eq!(id.known_manufacturer(), None);
-        assert_eq!(id.name(), "Custom Manufacturer");
-    }
-
-    #[test]
-    #[cfg(not(any(feature = "heapless", feature = "std")))]
-    fn test_manufacturer_identifier_static() {
-        let id = ManufacturerIdentifier::new_static("Custom Manufacturer");
         assert!(!id.is_known());
         assert_eq!(id.known_manufacturer(), None);
         assert_eq!(id.name(), "Custom Manufacturer");

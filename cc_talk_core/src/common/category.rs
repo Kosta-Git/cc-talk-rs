@@ -5,8 +5,7 @@
 ///
 /// You can find the reference in the specification cctalk-part-3-v4-7.pdf section 11.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Category {
     /// Unknown category, used when the category is not specified or recognized.
     Unknown,
@@ -84,7 +83,7 @@ impl From<&str> for Category {
     /// # Example
     ///
     /// ```
-    /// use no_std_cctalk::Category;
+    /// use cc_talk_core::cc_talk::Category;
     ///
     /// let category = Category::from("CoinAcceptor");
     /// assert_eq!(category, Category::CoinAcceptor);
@@ -187,8 +186,7 @@ impl From<&str> for Category {
 
 /// Represents a ccTalk device address.
 #[derive(Debug, Clone, PartialEq)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Address {
     // Represents a single address.
     Single(u8),
@@ -281,8 +279,7 @@ impl Iterator for AddressIterator {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg(feature = "defmt")]
-#[derive(defmt::Format)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum AddressMode {
     Other = 0,
     Flash = 1 << 0,

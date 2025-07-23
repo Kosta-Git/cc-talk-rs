@@ -8,5 +8,6 @@ pub mod date;
 pub mod device;
 pub mod fault_code;
 pub mod hopper_flags;
+pub mod hopper_status;
 pub mod manufacturers;
 pub mod packet;

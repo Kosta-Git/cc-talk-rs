@@ -1,0 +1,17 @@
+[package]
+name = "cc_talk_device"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cc_talk_core = { path = "../cc_talk_core", default-features = false }
+
+defmt = { version = "1.0.1", optional = true }
+log = { version = "0.4.27", optional = true }
+heapless = { version = "0.8.0" }
+
+[features]
+default = []
+
+defmt = ["dep:defmt", "cc_talk_core/defmt"]
+log = ["dep:log", "cc_talk_core/log"]

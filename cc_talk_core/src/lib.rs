@@ -43,4 +43,8 @@ pub mod cc_talk {
     pub use crate::commands::multi_drop::*;
 
     pub use crate::serde::*;
+
+    pub mod helpers {
+        pub use crate::log::*;
+    }
 }
