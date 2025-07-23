@@ -201,10 +201,12 @@ where
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum PacketError {
     OutOfBounds,
     DataLengthMismatch,
     InvalidHeader(u8),
+    InvalidPacket,
 }
 
 impl core::fmt::Display for PacketError {
@@ -216,6 +218,7 @@ impl core::fmt::Display for PacketError {
                 PacketError::OutOfBounds => "Index was out of bounds.",
                 PacketError::InvalidHeader(_) => "Invalid header value.",
                 PacketError::DataLengthMismatch => "The data length exceeds the buffer size",
+                PacketError::InvalidPacket => "The packet couldnt be validated",
             }
         )
     }

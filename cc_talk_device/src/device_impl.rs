@@ -1,6 +1,8 @@
+use core::future::Future;
+
 use cc_talk_core::{
-    Category, ChecksumType, HopperFlag,
     cc_talk::{DataStorage, HopperDispenseStatus, HopperStatus, Manufacturer, SerialCode},
+    Category, ChecksumType, Device,
 };
 
 pub trait DeviceImpl {
@@ -16,6 +18,8 @@ pub trait DeviceImpl {
     fn reset(&self) -> impl Future<Output = ()> + '_;
 
     fn is_for_me(&self, destination_address: u8) -> bool;
+    fn address(&self) -> u8;
+    fn device(&self) -> Device;
 }
 
 pub trait SimplePayoutDevice {
