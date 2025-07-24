@@ -133,9 +133,8 @@ where
                 packet.set_data(self.implementation.software_revision().as_bytes())
             }
             Header::RequestPayoutStatus => {
-                let status = self.implementation.request_payout_status().await;
-                let status: [u8; 4] = status.into();
-                packet.set_data(&status)
+                let status = self.implementation.request_sensor_status().await;
+                packet.set_data(&[status.into()])
             }
             Header::RequestDataStorageAvailability => {
                 let data_storage = self.implementation.data_storage_availability();
