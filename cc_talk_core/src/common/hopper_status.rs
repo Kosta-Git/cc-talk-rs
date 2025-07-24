@@ -82,6 +82,33 @@ impl HopperDispenseStatus {
             _ => self.event_counter + 1,
         }
     }
+
+    pub fn payout_requested(&self, coin_count: u8) -> HopperDispenseStatus {
+        HopperDispenseStatus {
+            event_counter: self.next_event_counter(),
+            coins_remaining: self.coins_remaining.saturating_add(coin_count),
+            paid: 0,
+            unpaid: 0,
+        }
+    }
+
+    pub fn coin_paid(&self, coin_count: u8) -> HopperDispenseStatus {
+        HopperDispenseStatus {
+            event_counter: self.next_event_counter(),
+            coins_remaining: self.coins_remaining.saturating_sub(coin_count),
+            paid: self.paid.saturating_add(coin_count),
+            unpaid: self.unpaid,
+        }
+    }
+
+    pub fn coin_unpaid(&self, coin_count: u8) -> HopperDispenseStatus {
+        HopperDispenseStatus {
+            event_counter: self.next_event_counter(),
+            coins_remaining: self.coins_remaining.saturating_sub(coin_count),
+            paid: self.paid,
+            unpaid: self.unpaid.saturating_add(coin_count),
+        }
+    }
 }
 
 impl core::convert::From<[u8; 4]> for HopperDispenseStatus {
