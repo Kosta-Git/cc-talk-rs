@@ -31,6 +31,7 @@ pub mod cc_talk {
     pub use crate::common::checksum::*;
     pub use crate::common::coin_acceptor_errors::*;
     pub use crate::common::coin_event::*;
+    pub use crate::common::coin_value_format::*;
     pub use crate::common::data_storage::*;
     pub use crate::common::date::*;
     pub use crate::common::device::*;
@@ -38,6 +39,7 @@ pub mod cc_talk {
     pub use crate::common::hopper_flags::*;
     pub use crate::common::hopper_status::*;
     pub use crate::common::manufacturers::*;
+    pub use crate::common::option_flags::*;
     pub use crate::common::packet::*;
 
     pub use crate::serde::*;

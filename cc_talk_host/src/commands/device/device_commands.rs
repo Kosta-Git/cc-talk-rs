@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 use cc_talk_core::{
     Fault, Header,
-    cc_talk::{BitMask, BitMaskError, CoinAcceptorPollResult, FaultCode, HopperStatus},
+    cc_talk::{
+        BitMask, BitMaskError, CoinAcceptorPollResult, FaultCode, HopperStatus, RequestOptionFlags,
+    },
 };
 
 use crate::commands::command::{Command, ParseResponseError};
@@ -753,6 +755,33 @@ impl<const N: usize> Command for WriteDataBlockCommand<N> {
                 0,
                 response_payload.len(),
             ))
+        }
+    }
+}
+
+pub struct RequestOptionFlagsCommand;
+impl Command for RequestOptionFlagsCommand {
+    type Response = RequestOptionFlags;
+
+    fn header(&self) -> Header {
+        Header::RequestOptionFlags
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    // Returns the option flags, you then have to convert them to the specific device type.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            1 => Ok(RequestOptionFlags::new(response_payload[0])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                1,
+                response_payload.len(),
+            )),
         }
     }
 }
