@@ -1,4 +1,4 @@
-use crate::Address;
+use cc_talk_core::{Address, Header};
 
 use super::{
     super::command::{BelongsTo, Command, ParseResponseError},
@@ -13,8 +13,8 @@ pub struct AddressPollCommand;
 impl Command for AddressPollCommand {
     type Response = u8;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::AddressPoll
+    fn header(&self) -> Header {
+        Header::AddressPoll
     }
 
     fn data(&self) -> &[u8] {
@@ -42,8 +42,8 @@ pub struct AddressClashCommand;
 impl Command for AddressClashCommand {
     type Response = u8;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::AddressClash
+    fn header(&self) -> Header {
+        Header::AddressClash
     }
 
     fn data(&self) -> &[u8] {
@@ -85,8 +85,8 @@ impl AddressChangeCommand {
 impl Command for AddressChangeCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::AddressChange
+    fn header(&self) -> Header {
+        Header::AddressChange
     }
 
     fn data(&self) -> &[u8] {
@@ -114,8 +114,8 @@ pub struct AddressRandomCommand;
 impl Command for AddressRandomCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::AddressRandom
+    fn header(&self) -> Header {
+        Header::AddressRandom
     }
 
     fn data(&self) -> &[u8] {

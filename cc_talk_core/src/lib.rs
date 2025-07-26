@@ -3,7 +3,6 @@
 #[cfg(any(feature = "std", test))]
 extern crate std;
 
-mod commands;
 mod common;
 mod log;
 mod serde;
@@ -38,11 +37,6 @@ pub mod cc_talk {
     pub use crate::common::hopper_status::*;
     pub use crate::common::manufacturers::*;
     pub use crate::common::packet::*;
-
-    pub use crate::commands::core::*;
-    pub use crate::commands::core_plus::*;
-    pub use crate::commands::device::*;
-    pub use crate::commands::multi_drop::*;
 
     pub use crate::serde::*;
 }

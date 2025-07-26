@@ -1,4 +1,7 @@
-use crate::cc_talk::{DataStorage, RTBYDate, SerialCode};
+use cc_talk_core::{
+    Header,
+    cc_talk::{DataStorage, RTBYDate, SerialCode},
+};
 
 use super::{
     super::command::{BelongsTo, Command, ParseResponseError},
@@ -9,8 +12,8 @@ pub struct RequestSerialNumberCommand;
 impl Command for RequestSerialNumberCommand {
     type Response = SerialCode;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestSerialNumber
+    fn header(&self) -> Header {
+        Header::RequestSerialNumber
     }
 
     fn data(&self) -> &[u8] {
@@ -41,8 +44,8 @@ pub struct RequestSoftwareRevisionCommand;
 impl Command for RequestSoftwareRevisionCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestSoftwareRevision
+    fn header(&self) -> Header {
+        Header::RequestSoftwareRevision
     }
 
     fn data(&self) -> &[u8] {
@@ -89,8 +92,8 @@ impl ReadDHPublicKeyCommand {
 impl Command for ReadDHPublicKeyCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::ReadDHPubKey
+    fn header(&self) -> Header {
+        Header::ReadDHPubKey
     }
 
     fn data(&self) -> &[u8] {
@@ -118,8 +121,8 @@ impl<'a> SendDHPublicKeyCommand<'a> {
 impl Command for SendDHPublicKeyCommand<'_> {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::SendDHPubKey
+    fn header(&self) -> Header {
+        Header::SendDHPubKey
     }
 
     fn data(&self) -> &[u8] {
@@ -154,8 +157,8 @@ pub struct RequestDataStorageAvailabilityCommand;
 impl Command for RequestDataStorageAvailabilityCommand {
     type Response = DataStorage;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestDataStorageAvailability
+    fn header(&self) -> Header {
+        Header::RequestDataStorageAvailability
     }
 
     fn data(&self) -> &[u8] {
@@ -195,8 +198,8 @@ pub struct CalculateRomChecksumCommand;
 impl Command for CalculateRomChecksumCommand {
     type Response = u32;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::CalculateROMChecksum
+    fn header(&self) -> Header {
+        Header::CalculateROMChecksum
     }
 
     fn data(&self) -> &[u8] {
@@ -228,8 +231,8 @@ pub struct RequestCreationDateCommand;
 impl Command for RequestCreationDateCommand {
     type Response = RTBYDate;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestCreationDate
+    fn header(&self) -> Header {
+        Header::RequestCreationDate
     }
 
     fn data(&self) -> &[u8] {
@@ -250,8 +253,8 @@ pub struct RequestLastModificationDateCommand;
 impl Command for RequestLastModificationDateCommand {
     type Response = RTBYDate;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestLastModificationDate
+    fn header(&self) -> Header {
+        Header::RequestLastModificationDate
     }
 
     fn data(&self) -> &[u8] {
@@ -283,8 +286,8 @@ pub struct RequestBaseYearCommand;
 impl Command for RequestBaseYearCommand {
     type Response = u16;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestBaseYear
+    fn header(&self) -> Header {
+        Header::RequestBaseYear
     }
 
     fn data(&self) -> &[u8] {
@@ -324,8 +327,8 @@ pub struct RequestAddressModeCommand;
 impl Command for RequestAddressModeCommand {
     type Response = u8;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestAddressMode
+    fn header(&self) -> Header {
+        Header::RequestAddressMode
     }
 
     fn data(&self) -> &[u8] {
@@ -366,8 +369,8 @@ pub struct RequestUsbIdCommand;
 impl Command for RequestUsbIdCommand {
     type Response = UsbInfo;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestUsbId
+    fn header(&self) -> Header {
+        Header::RequestUsbId
     }
 
     fn data(&self) -> &[u8] {
@@ -447,8 +450,8 @@ impl SwitchBaudRateCommand {
 impl Command for SwitchBaudRateCommand {
     type Response = BaudRateSwitchStatus;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::SwitchBaudRate
+    fn header(&self) -> Header {
+        Header::SwitchBaudRate
     }
 
     fn data(&self) -> &[u8] {
@@ -491,8 +494,8 @@ impl<'a> DataStreamCommand<'a> {
 impl Command for DataStreamCommand<'_> {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::DataStream
+    fn header(&self) -> Header {
+        Header::DataStream
     }
 
     fn data(&self) -> &[u8] {
@@ -510,8 +513,8 @@ pub struct BusyCommand;
 impl Command for BusyCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::Busy
+    fn header(&self) -> Header {
+        Header::Busy
     }
 
     fn data(&self) -> &[u8] {
@@ -529,8 +532,8 @@ pub struct NackCommand;
 impl Command for NackCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::NACK
+    fn header(&self) -> Header {
+        Header::NACK
     }
 
     fn data(&self) -> &[u8] {
@@ -548,8 +551,8 @@ pub struct RequestCommsRevisionCommand;
 impl Command for RequestCommsRevisionCommand {
     type Response = (u8, u8, u8);
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestCommsRevision
+    fn header(&self) -> Header {
+        Header::RequestCommsRevision
     }
 
     fn data(&self) -> &[u8] {
@@ -583,8 +586,8 @@ pub struct ResetDeviceCommand;
 impl Command for ResetDeviceCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::ResetDevice
+    fn header(&self) -> Header {
+        Header::ResetDevice
     }
 
     fn data(&self) -> &[u8] {
@@ -609,14 +612,14 @@ impl BelongsTo<CorePlusCommandSet> for ResetDeviceCommand {}
 
 #[cfg(test)]
 mod test {
-    use crate::{cc_talk::MemoryType, Header};
+    use cc_talk_core::{Header, cc_talk::MemoryType};
 
     use super::*;
 
     #[test]
     fn request_valid_serial_number() {
         use super::RequestSerialNumberCommand;
-        use crate::cc_talk::SerialCode;
+        use cc_talk_core::cc_talk::SerialCode;
 
         let command = RequestSerialNumberCommand;
         let response = command.parse_response(&[0, 0, 1]).unwrap();

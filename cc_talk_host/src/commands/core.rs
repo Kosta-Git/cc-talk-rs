@@ -1,4 +1,4 @@
-use crate::Category;
+use cc_talk_core::Category;
 
 use super::command::CommandSet;
 

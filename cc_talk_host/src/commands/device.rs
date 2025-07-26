@@ -1,11 +1,10 @@
-use crate::{
-    cc_talk::{CorePlusCommandSet, MdbCommandSet},
-    Category,
-};
+use cc_talk_core::Category;
 
 use super::{
     command::{BelongsTo, CommandSet},
-    core::{core_commands::SimplePollCommand, CoreCommandSet},
+    core::{CoreCommandSet, core_commands::SimplePollCommand},
+    core_plus::CorePlusCommandSet,
+    multi_drop::MdbCommandSet,
 };
 
 pub mod device_commands;

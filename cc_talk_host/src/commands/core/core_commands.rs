@@ -1,4 +1,4 @@
-use crate::{cc_talk::Manufacturer, Category};
+use cc_talk_core::{Category, Header, cc_talk::Manufacturer};
 
 use super::{
     super::command::{BelongsTo, Command, ParseResponseError},
@@ -9,8 +9,8 @@ pub struct SimplePollCommand;
 impl Command for SimplePollCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::SimplePoll
+    fn header(&self) -> Header {
+        Header::SimplePoll
     }
 
     fn data(&self) -> &[u8] {
@@ -36,8 +36,8 @@ pub struct RequestManufacturerIdCommand;
 impl Command for RequestManufacturerIdCommand {
     type Response = Manufacturer;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestManufacturerId
+    fn header(&self) -> Header {
+        Header::RequestManufacturerId
     }
 
     fn data(&self) -> &[u8] {
@@ -62,8 +62,8 @@ pub struct RequestEquipementCategoryIdCommand;
 impl Command for RequestEquipementCategoryIdCommand {
     type Response = Category;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestEquipementCategoryId
+    fn header(&self) -> Header {
+        Header::RequestEquipementCategoryId
     }
 
     fn data(&self) -> &[u8] {
@@ -88,8 +88,8 @@ pub struct RequestProductCodeCommand;
 impl Command for RequestProductCodeCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestProductCode
+    fn header(&self) -> Header {
+        Header::RequestProductCode
     }
 
     fn data(&self) -> &[u8] {
@@ -117,8 +117,8 @@ pub struct RequestBuildCodeCommand;
 impl Command for RequestBuildCodeCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestBuildCode
+    fn header(&self) -> Header {
+        Header::RequestBuildCode
     }
 
     fn data(&self) -> &[u8] {
@@ -147,8 +147,8 @@ pub struct RequestEncryptionSupportCommand;
 impl Command for RequestEncryptionSupportCommand {
     type Response = bool;
 
-    fn header(&self) -> crate::Header {
-        crate::Header::RequestEncryptionSupport
+    fn header(&self) -> Header {
+        Header::RequestEncryptionSupport
     }
 
     fn data(&self) -> &[u8] {
@@ -164,12 +164,14 @@ impl BelongsTo<CoreCommandSet> for RequestEncryptionSupportCommand {}
 
 #[cfg(test)]
 mod test {
+    use cc_talk_core::Category;
+
     use super::*;
 
     #[test]
     fn simple_poll_command() {
         let cmd = SimplePollCommand;
-        assert_eq!(cmd.header(), crate::Header::SimplePoll);
+        assert_eq!(cmd.header(), Header::SimplePoll);
         assert!(cmd.data().is_empty());
         assert!(cmd.parse_response(&[]).is_ok());
         assert!(cmd.parse_response(&[1, 2, 3]).is_err());
@@ -178,7 +180,7 @@ mod test {
     #[test]
     fn existing_manufacturer() {
         let cmd = RequestManufacturerIdCommand;
-        assert_eq!(cmd.header(), crate::Header::RequestManufacturerId);
+        assert_eq!(cmd.header(), Header::RequestManufacturerId);
         assert!(cmd.data().is_empty());
 
         let inotek = b"INK";
@@ -207,7 +209,7 @@ mod test {
     #[test]
     fn category_id_command() {
         let cmd = RequestEquipementCategoryIdCommand;
-        assert_eq!(cmd.header(), crate::Header::RequestEquipementCategoryId);
+        assert_eq!(cmd.header(), Header::RequestEquipementCategoryId);
         assert!(cmd.data().is_empty());
 
         let bill_validator = b"Bill Validator";
@@ -224,7 +226,7 @@ mod test {
     #[test]
     fn product_code() {
         let cmd = RequestProductCodeCommand;
-        assert_eq!(cmd.header(), crate::Header::RequestProductCode);
+        assert_eq!(cmd.header(), Header::RequestProductCode);
         assert!(cmd.data().is_empty());
 
         let valid_product_code = b"Product123";
@@ -239,7 +241,7 @@ mod test {
     #[test]
     fn request_build_code() {
         let cmd = RequestBuildCodeCommand;
-        assert_eq!(cmd.header(), crate::Header::RequestBuildCode);
+        assert_eq!(cmd.header(), Header::RequestBuildCode);
         assert!(cmd.data().is_empty());
 
         let valid_build_code = b"Build123";
@@ -255,7 +257,7 @@ mod test {
     #[should_panic]
     fn request_encryption_support() {
         let cmd = RequestEncryptionSupportCommand;
-        assert_eq!(cmd.header(), crate::Header::RequestEncryptionSupport);
+        assert_eq!(cmd.header(), Header::RequestEncryptionSupport);
         assert_eq!(cmd.data(), &[170, 85, 0, 0, 85, 170]);
 
         // This command is not implemented yet, so we just check that it compiles.

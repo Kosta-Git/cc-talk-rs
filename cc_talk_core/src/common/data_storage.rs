@@ -1,5 +1,3 @@
-use crate::commands::command::ParseResponseError;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct DataStorage {
@@ -88,8 +86,13 @@ pub enum MemoryType {
     PermanentLimitedUse = 2,
     PermanentUnlimitedUse = 3,
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum MemoryTypeError {
+    InvalidMemoryType,
+}
 impl TryFrom<u8> for MemoryType {
-    type Error = ParseResponseError;
+    type Error = MemoryTypeError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
@@ -97,7 +100,7 @@ impl TryFrom<u8> for MemoryType {
             1 => Ok(MemoryType::VolatileOnPowerDown),
             2 => Ok(MemoryType::PermanentLimitedUse),
             3 => Ok(MemoryType::PermanentUnlimitedUse),
-            _ => Err(ParseResponseError::ParseError("Invalid memory type")),
+            _ => Err(MemoryTypeError::InvalidMemoryType),
         }
     }
 }

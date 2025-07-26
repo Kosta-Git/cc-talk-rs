@@ -1,4 +1,4 @@
-use crate::{Category, Header};
+use cc_talk_core::{Category, Header};
 
 /// Defines which command are available to a category.
 /// This trait is an utility design to help users know which commands are available for their
@@ -26,7 +26,7 @@ pub trait Command {
 
     /// Parses the payload of the response.
     fn parse_response(&self, response_payload: &[u8])
-        -> Result<Self::Response, ParseResponseError>;
+    -> Result<Self::Response, ParseResponseError>;
 }
 ///
 /// Errors that can occur during command execution

@@ -1,14 +1,8 @@
 use core::time::Duration;
 
-use crate::{
-    cc_talk::FaultCode,
-    commands::command::{self, Command, ParseResponseError},
-    common::{
-        coin_event::{CoinAcceptorPollResult, CoinEvent},
-        fault_code,
-    },
-    Fault, Header,
-};
+use cc_talk_core::{Fault, Header, cc_talk::FaultCode};
+
+use crate::commands::command::{Command, ParseResponseError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PollingUnit {
@@ -31,7 +25,7 @@ pub struct RequestPollingPriorityCommand;
 impl Command for RequestPollingPriorityCommand {
     type Response = PollingPriority;
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::RequestPollingPriority
     }
 
@@ -81,7 +75,7 @@ pub struct RequestStatusCommand;
 impl Command for RequestStatusCommand {
     type Response = CoinAcceptorStatus;
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::RequestStatus
     }
 
@@ -112,7 +106,7 @@ pub struct RequestVariableSetCommand;
 impl Command for RequestVariableSetCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::RequestVariableSet
     }
 
@@ -130,7 +124,7 @@ pub struct RequestDatabaseVersionCommand;
 impl Command for RequestDatabaseVersionCommand {
     type Response = u8;
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::RequestDatabaseVersion
     }
 
@@ -165,7 +159,7 @@ impl TestSolenoidsCommand {
 impl Command for TestSolenoidsCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::TestSolenoids
     }
 
@@ -192,7 +186,7 @@ impl OperateMotorsCommand {
 impl Command for OperateMotorsCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::OperateMotors
     }
 
@@ -219,7 +213,7 @@ impl TestOutputLinesCommand {
 impl Command for TestOutputLinesCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::TestOutputLines
     }
 
@@ -238,7 +232,7 @@ pub struct ReadInputLinesCommand;
 impl Command for ReadInputLinesCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::ReadInputLines
     }
 
@@ -257,7 +251,7 @@ pub struct ReadOptoStatesCommand;
 impl Command for ReadOptoStatesCommand {
     type Response = u8; // Assuming the response is a single byte representing the opto states.
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::ReadOptoStates
     }
 
@@ -287,7 +281,7 @@ pub struct LatchOutputLinesCommand {
 impl Command for LatchOutputLinesCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::LatchOutputLines
     }
 
@@ -305,7 +299,7 @@ pub struct PerformSelfCheckCommand;
 impl Command for PerformSelfCheckCommand {
     type Response = Fault;
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::PerformSelfCheck
     }
 
@@ -323,7 +317,7 @@ impl Command for PerformSelfCheckCommand {
                 Ok(Fault::new(fault_code))
             }
             2 => {
-                let fault_code = fault_code::FaultCode::try_from(payload[0])
+                let fault_code = FaultCode::try_from(payload[0])
                     .map_err(|_| ParseResponseError::ParseError("Invalid fault code"))?;
                 let fault_info = payload[1];
 
@@ -350,7 +344,7 @@ impl ModifyInhibitStatusCommand {
 impl Command for ModifyInhibitStatusCommand {
     type Response = ();
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::ModifyInhibitStatus
     }
 
@@ -372,7 +366,7 @@ pub struct RequestInhibitStatusCommand;
 impl Command for RequestInhibitStatusCommand {
     type Response = [u8; 4];
 
-    fn header(&self) -> crate::Header {
+    fn header(&self) -> Header {
         Header::RequestInhibitStatus
     }
 
