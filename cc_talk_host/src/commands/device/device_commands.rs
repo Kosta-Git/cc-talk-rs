@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use cc_talk_core::{
     Fault, Header,
-    cc_talk::{BitMask, BitMaskError, CoinAcceptorPollResult, FaultCode},
+    cc_talk::{BitMask, BitMaskError, CoinAcceptorPollResult, FaultCode, HopperStatus},
 };
 
 use crate::commands::command::{Command, ParseResponseError};
@@ -546,17 +546,17 @@ impl Command for RequestCreditCounterCommand {
 // TODO: Implement this once encryption is supported
 pub struct ModifyEncryptedInhibitAndOverrideRegistersCommand;
 
-pub struct ModifySorterOverrideStatus {
+pub struct ModifySorterOverrideStatusCommand {
     buffer: u8,
 }
-impl ModifySorterOverrideStatus {
+impl ModifySorterOverrideStatusCommand {
     pub fn build(bitmask: BitMask<1>) -> Result<Self, BitMaskError> {
-        Ok(ModifySorterOverrideStatus {
+        Ok(ModifySorterOverrideStatusCommand {
             buffer: bitmask.to_le_bytes::<1>()?[0],
         })
     }
 }
-impl Command for ModifySorterOverrideStatus {
+impl Command for ModifySorterOverrideStatusCommand {
     type Response = ();
 
     fn header(&self) -> Header {
@@ -576,8 +576,8 @@ impl Command for ModifySorterOverrideStatus {
     }
 }
 
-pub struct RequestSorterOverrideStatus;
-impl Command for RequestSorterOverrideStatus {
+pub struct RequestSorterOverrideStatusCommand;
+impl Command for RequestSorterOverrideStatusCommand {
     type Response = BitMask<1>;
 
     fn header(&self) -> Header {
@@ -600,6 +600,159 @@ impl Command for RequestSorterOverrideStatus {
                 1,
                 response_payload.len(),
             )),
+        }
+    }
+}
+
+pub struct EnterNewPinNumberCommand {
+    pub pin: [u8; 4],
+}
+impl Command for EnterNewPinNumberCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::EnterNewPinNumber
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.pin
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()), // No data expected in response
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct EnterPinNumberCommand {
+    pub pin: [u8; 4],
+}
+impl Command for EnterPinNumberCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::EnterPinNumber
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.pin
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()), // No data expected in response
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestpayoutHighLowStatusCommand;
+impl Command for RequestpayoutHighLowStatusCommand {
+    type Response = (u8, HopperStatus);
+
+    fn header(&self) -> Header {
+        Header::RequestPayoutStatus
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(&self, payload: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        match payload.len() {
+            1 => Ok((0, HopperStatus::from(payload[0]))),
+            2 => Ok((payload[0], HopperStatus::from(payload[1]))),
+            _ => Err(ParseResponseError::DataLengthMismatch(1, payload.len())),
+        }
+    }
+}
+
+/// The size `N` should be retrieved from [Header::DataStorageAvailability]
+pub struct ReadDataBlockCommand<const N: usize> {
+    pub block_number: u8,
+}
+impl<const N: usize> Command for ReadDataBlockCommand<N> {
+    type Response = [u8; N];
+
+    fn header(&self) -> Header {
+        Header::ReadDataBlock
+    }
+
+    fn data(&self) -> &[u8] {
+        core::slice::from_ref(&self.block_number)
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            len if len == N => Ok(response_payload.try_into().unwrap()),
+            len if len > N => {
+                crate::log::info!("unexpected response length: expected {}, got {}", N, len);
+                Ok(response_payload[0..N].try_into().unwrap())
+            }
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                N,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+/// The size `N` should be retrieved from [Header::DataStorageAvailability]
+pub struct WriteDataBlockCommand<const N: usize> {
+    data: heapless::Vec<u8, 256>,
+}
+impl<const N: usize> WriteDataBlockCommand<N> {
+    pub fn new(block_number: u8, buffer: &[u8]) -> Result<Self, ()> {
+        if buffer.len() > N {
+            return Err(());
+        }
+
+        let mut data = heapless::Vec::new();
+        data.push(block_number).map_err(|_| ())?;
+        data.extend_from_slice(buffer).map_err(|_| ())?;
+
+        Ok(WriteDataBlockCommand { data })
+    }
+}
+impl<const N: usize> Command for WriteDataBlockCommand<N> {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::WriteDataBlock
+    }
+
+    fn data(&self) -> &[u8] {
+        self.data.as_slice()
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
         }
     }
 }
