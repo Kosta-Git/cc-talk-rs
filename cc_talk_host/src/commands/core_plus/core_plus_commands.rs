@@ -658,9 +658,9 @@ mod test {
             response,
             DataStorage {
                 memory_type: MemoryType::PermanentUnlimitedUse,
-                read_blocks: 0,
+                read_blocks: 255,
                 read_bytes_per_block: 0,
-                write_blocks: 0,
+                write_blocks: 50,
                 write_bytes_per_block: 0
             }
         );

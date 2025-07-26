@@ -2,8 +2,8 @@
 use cc_talk_core::{
     Fault, Header,
     cc_talk::{
-        BitMask, BitMaskError, CoinAcceptorPollResult, FaultCode, HopperStatus, PowerOption,
-        RequestOptionFlags, SorterPath, TeachModeStatus,
+        BitMask, BitMaskError, CoinAcceptorPollResult, CurrencyToken, FaultCode, HopperStatus,
+        PowerOption, RequestOptionFlags, SorterPath, TeachModeStatus,
     },
 };
 
@@ -1398,6 +1398,91 @@ impl Command for RequestPayoutCapacityCommand {
             ])),
             _ => Err(ParseResponseError::DataLengthMismatch(
                 2,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ModifyCoinIdCommand {
+    buffer: [u8; 7],
+}
+impl ModifyCoinIdCommand {
+    pub fn new(coin_position: u8, coin_id: &[u8; 6]) -> Self {
+        ModifyCoinIdCommand {
+            buffer: [
+                coin_position,
+                coin_id[0],
+                coin_id[1],
+                coin_id[2],
+                coin_id[3],
+                coin_id[4],
+                coin_id[5],
+            ],
+        }
+    }
+}
+impl Command for ModifyCoinIdCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifyCoinId
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct RequestCoinIdCommand {
+    buffer: [u8; 1],
+}
+impl RequestCoinIdCommand {
+    pub fn new(coin_position: u8) -> Self {
+        RequestCoinIdCommand {
+            buffer: [coin_position],
+        }
+    }
+}
+impl Command for RequestCoinIdCommand {
+    type Response = CurrencyToken;
+
+    fn header(&self) -> Header {
+        Header::RequestCoinId
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            6 => {
+                let payload_str = core::str::from_utf8(&response_payload[0..6])
+                    .map_err(|_| ParseResponseError::ParseError("Invalid UTF-8 in coin ID"))?;
+
+                CurrencyToken::build(payload_str)
+                    .map_err(|_| ParseResponseError::ParseError("Invalid coin ID format"))
+            }
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                6,
                 response_payload.len(),
             )),
         }
