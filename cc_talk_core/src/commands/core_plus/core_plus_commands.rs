@@ -1,10 +1,7 @@
-use crate::{
-    cc_talk::{DataStorage, MemoryType, RTBYDate, SerialCode},
-    Category,
-};
+use crate::cc_talk::{DataStorage, RTBYDate, SerialCode};
 
 use super::{
-    super::command::{BelongsTo, Command, CommandSet, ParseResponseError},
+    super::command::{BelongsTo, Command, ParseResponseError},
     CorePlusCommandSet,
 };
 
@@ -612,7 +609,7 @@ impl BelongsTo<CorePlusCommandSet> for ResetDeviceCommand {}
 
 #[cfg(test)]
 mod test {
-    use crate::Header;
+    use crate::{cc_talk::MemoryType, Header};
 
     use super::*;
 
