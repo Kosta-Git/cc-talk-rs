@@ -1,6 +1,8 @@
-use core::time::Duration;
-
-use cc_talk_core::{Fault, Header, cc_talk::FaultCode};
+#![allow(dead_code)]
+use cc_talk_core::{
+    Fault, Header,
+    cc_talk::{BitMask, BitMaskError, CoinAcceptorPollResult, FaultCode},
+};
 
 use crate::commands::command::{Command, ParseResponseError};
 
@@ -329,19 +331,18 @@ impl Command for PerformSelfCheckCommand {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct ModifyInhibitStatusCommand {
-    buffer: [u8; 4],
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct ModifyInhibitStatusCommand<const N: usize> {
+    buffer: [u8; N],
 }
-impl ModifyInhibitStatusCommand {
-    /// Creates a new ModifyInhibitStatusCommand with the given buffer.
-    ///
-    /// Bit 0 at index 0 is the first inhibit flag, bit 1 at index 0 is the second inhibit flag,
-    /// etc.
-    pub fn new(buffer: [u8; 4]) -> Self {
-        ModifyInhibitStatusCommand { buffer }
+impl<const N: usize> ModifyInhibitStatusCommand<N> {
+    pub fn build(mask: BitMask<N>) -> Result<Self, BitMaskError> {
+        Ok(ModifyInhibitStatusCommand {
+            buffer: mask.to_le_bytes::<N>()?,
+        })
     }
 }
-impl Command for ModifyInhibitStatusCommand {
+impl<const N: usize> Command for ModifyInhibitStatusCommand<N> {
     type Response = ();
 
     fn header(&self) -> Header {
@@ -362,9 +363,9 @@ impl Command for ModifyInhibitStatusCommand {
     }
 }
 
-pub struct RequestInhibitStatusCommand;
-impl Command for RequestInhibitStatusCommand {
-    type Response = [u8; 4];
+pub struct RequestInhibitStatusCommand<const N: usize>;
+impl<const N: usize> Command for RequestInhibitStatusCommand<N> {
+    type Response = [u8; N];
 
     fn header(&self) -> Header {
         Header::RequestInhibitStatus
@@ -379,11 +380,224 @@ impl Command for RequestInhibitStatusCommand {
         response_payload: &[u8],
     ) -> Result<Self::Response, ParseResponseError> {
         match response_payload.len() {
-            4 => Ok(response_payload.try_into().unwrap()),
-            // TODO: Add logging for unexpected lengths
-            5..=usize::MAX => Ok(response_payload[0..4].try_into().unwrap()),
+            len if len == N => Ok(response_payload.try_into().unwrap()),
+            len if len > N => {
+                crate::log::info!("unexpected response length: expected {}, got {}", N, len);
+                Ok(response_payload[0..len].try_into().unwrap())
+            }
             _ => Err(ParseResponseError::DataLengthMismatch(
                 4,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ReadBufferedCreditOrErrorCodeCommand;
+impl Command for ReadBufferedCreditOrErrorCodeCommand {
+    type Response = CoinAcceptorPollResult;
+
+    fn header(&self) -> Header {
+        Header::ReadBufferedCreditOrErrorCodes
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(&self, payload: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        if payload.is_empty() {
+            return Err(ParseResponseError::DataLengthMismatch(1, payload.len()));
+        }
+
+        CoinAcceptorPollResult::try_from(payload)
+            .map_err(|_| ParseResponseError::ParseError("Invalid coin acceptor poll result"))
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct ModifyMasterInhibitStatusCommand<const N: usize> {
+    buffer: [u8; N],
+}
+impl<const N: usize> ModifyMasterInhibitStatusCommand<N> {
+    pub fn build(mask: BitMask<N>) -> Result<Self, BitMaskError> {
+        Ok(ModifyMasterInhibitStatusCommand {
+            buffer: mask.to_le_bytes::<N>()?,
+        })
+    }
+}
+impl<const N: usize> Command for ModifyMasterInhibitStatusCommand<N> {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifyMasterInhibitStatus
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(&self, payload: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        if payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(0, payload.len()))
+        }
+    }
+}
+
+pub struct RequestMasterInhibitStatusCommand<const N: usize>;
+impl<const N: usize> Command for RequestMasterInhibitStatusCommand<N> {
+    type Response = [u8; N];
+
+    fn header(&self) -> Header {
+        Header::RequestMasterInhibitStatus
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            len if len == N => Ok(response_payload
+                .try_into()
+                .map_err(|_| ParseResponseError::ParseError("unable to map to slice"))?),
+            len if len > N => {
+                crate::log::info!("unexpected response length: expected {}, got {}", N, len);
+                Ok(response_payload[0..len]
+                    .try_into()
+                    .map_err(|_| ParseResponseError::ParseError("unable to map to slice"))?)
+            }
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                4,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestInsertionCounterCommand;
+impl Command for RequestInsertionCounterCommand {
+    type Response = u32;
+
+    fn header(&self) -> Header {
+        Header::RequestInsertionCounter
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            3 => Ok(u32::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                0u8,
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                3,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestCreditCounterCommand;
+impl Command for RequestCreditCounterCommand {
+    type Response = u32;
+
+    fn header(&self) -> Header {
+        Header::RequestAcceptCounter
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            3 => Ok(u32::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                0u8,
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                3,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+// TODO: Implement this once encryption is supported
+pub struct ModifyEncryptedInhibitAndOverrideRegistersCommand;
+
+pub struct ModifySorterOverrideStatus {
+    buffer: u8,
+}
+impl ModifySorterOverrideStatus {
+    pub fn build(bitmask: BitMask<1>) -> Result<Self, BitMaskError> {
+        Ok(ModifySorterOverrideStatus {
+            buffer: bitmask.to_le_bytes::<1>()?[0],
+        })
+    }
+}
+impl Command for ModifySorterOverrideStatus {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifySorterOverrideStatus
+    }
+
+    fn data(&self) -> &[u8] {
+        core::slice::from_ref(&self.buffer)
+    }
+
+    fn parse_response(&self, payload: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        if payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(0, payload.len()))
+        }
+    }
+}
+
+pub struct RequestSorterOverrideStatus;
+impl Command for RequestSorterOverrideStatus {
+    type Response = BitMask<1>;
+
+    fn header(&self) -> Header {
+        Header::RequestSorterOverrideStatus
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            1 => BitMask::<1>::from_le_bytes(response_payload, 8).map_err(|_| {
+                ParseResponseError::ParseError("Invalid sorter override status bitmask")
+            }),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                1,
                 response_payload.len(),
             )),
         }

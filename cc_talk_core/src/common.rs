@@ -1,4 +1,5 @@
 pub mod bill_event_types;
+pub mod bit_mask;
 pub mod category;
 pub mod checksum;
 pub mod coin_acceptor_errors;
