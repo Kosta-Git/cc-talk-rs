@@ -41,6 +41,8 @@ pub mod cc_talk {
     pub use crate::common::manufacturers::*;
     pub use crate::common::option_flags::*;
     pub use crate::common::packet::*;
+    pub use crate::common::power_option::*;
+    pub use crate::common::teach_mode_status::*;
 
     pub use crate::serde::*;
 }

@@ -15,3 +15,5 @@ pub mod hopper_status;
 pub mod manufacturers;
 pub mod option_flags;
 pub mod packet;
+pub mod power_option;
+pub mod teach_mode_status;

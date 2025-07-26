@@ -2,7 +2,8 @@
 use cc_talk_core::{
     Fault, Header,
     cc_talk::{
-        BitMask, BitMaskError, CoinAcceptorPollResult, FaultCode, HopperStatus, RequestOptionFlags,
+        BitMask, BitMaskError, CoinAcceptorPollResult, FaultCode, HopperStatus, PowerOption,
+        RequestOptionFlags, SorterPath, TeachModeStatus,
     },
 };
 
@@ -780,6 +781,623 @@ impl Command for RequestOptionFlagsCommand {
             1 => Ok(RequestOptionFlags::new(response_payload[0])),
             _ => Err(ParseResponseError::DataLengthMismatch(
                 1,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestCoinPositionCommand {
+    buffer: [u8; 1],
+}
+impl RequestCoinPositionCommand {
+    pub fn new(coin_position: u8) -> Self {
+        RequestCoinPositionCommand {
+            buffer: [coin_position],
+        }
+    }
+}
+impl Command for RequestCoinPositionCommand {
+    type Response = (u8, u8);
+
+    fn header(&self) -> Header {
+        Header::RequestCoinPosition
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            2 => Ok((response_payload[0], response_payload[1])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                2,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct PowerManagementControlCommand {
+    buffer: [u8; 1],
+}
+impl PowerManagementControlCommand {
+    pub fn new(power_option: PowerOption) -> Self {
+        PowerManagementControlCommand {
+            buffer: [power_option as u8],
+        }
+    }
+}
+impl Command for PowerManagementControlCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::PowerManagementControl
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct ModifySorterPathCommand {
+    buffer: [u8; 2],
+}
+impl ModifySorterPathCommand {
+    pub fn new(coin_position: u8, sorter: u8) -> Self {
+        ModifySorterPathCommand {
+            buffer: [coin_position, sorter],
+        }
+    }
+}
+impl Command for ModifySorterPathCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifySorterPaths
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct RequestSorterPathCommand {
+    buffer: [u8; 1],
+}
+impl RequestSorterPathCommand {
+    pub fn new(coin_position: u8) -> Self {
+        RequestSorterPathCommand {
+            buffer: [coin_position],
+        }
+    }
+}
+impl Command for RequestSorterPathCommand {
+    type Response = SorterPath;
+
+    fn header(&self) -> Header {
+        Header::RequestSorterPaths
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            1 => Ok(SorterPath::from(response_payload[0])),
+            2..=usize::MAX => {
+                crate::log::info!(
+                    "multipath coin are not yet supported, got {} bytes",
+                    response_payload.len()
+                );
+                Ok(SorterPath::from(response_payload[0]))
+            }
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                1,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ModifyPayoutAbsoluteCountCommand {
+    buffer: [u8; 3],
+    has_hopper_number: bool,
+}
+impl ModifyPayoutAbsoluteCountCommand {
+    pub fn new(count: u32) -> Self {
+        ModifyPayoutAbsoluteCountCommand {
+            buffer: [(count & 0xFF) as u8, ((count >> 8) & 0xFF) as u8, 0u8],
+            has_hopper_number: false,
+        }
+    }
+
+    pub fn new_with_hopper(hopper_number: u8, count: u32) -> Self {
+        ModifyPayoutAbsoluteCountCommand {
+            buffer: [
+                hopper_number,
+                (count & 0xFF) as u8,
+                ((count >> 8) & 0xFF) as u8,
+            ],
+            has_hopper_number: true,
+        }
+    }
+}
+impl Command for ModifyPayoutAbsoluteCountCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifyPayoutAbsoluteCount
+    }
+
+    fn data(&self) -> &[u8] {
+        if self.has_hopper_number {
+            &self.buffer[..]
+        } else {
+            &self.buffer[..2]
+        }
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct RequestPayoutAbsoluteCountCommand {
+    buffer: [u8; 1],
+    has_hopper_number: bool,
+}
+impl RequestPayoutAbsoluteCountCommand {
+    pub fn new() -> Self {
+        RequestPayoutAbsoluteCountCommand {
+            buffer: [0u8],
+            has_hopper_number: false,
+        }
+    }
+
+    pub fn new_with_hopper(hopper_number: u8) -> Self {
+        RequestPayoutAbsoluteCountCommand {
+            buffer: [hopper_number],
+            has_hopper_number: true,
+        }
+    }
+}
+impl Command for RequestPayoutAbsoluteCountCommand {
+    type Response = u16;
+
+    fn header(&self) -> Header {
+        Header::RequestPayoutAbsoluteCount
+    }
+
+    fn data(&self) -> &[u8] {
+        if self.has_hopper_number {
+            &self.buffer[..]
+        } else {
+            &[]
+        }
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            2 => Ok(u16::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                2,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+// TODO: Implement this
+pub struct MeterControlCommand;
+
+// TODO: Implement this
+pub struct DisplayControlCommand;
+
+pub struct TeachModeControlCommand {
+    buffer: [u8; 2],
+    has_orientation: bool,
+}
+impl TeachModeControlCommand {
+    pub fn new(position: u8) -> Self {
+        TeachModeControlCommand {
+            buffer: [position, 0u8],
+            has_orientation: false,
+        }
+    }
+
+    pub fn new_with_orientation(position: u8, orientation: u8) -> Self {
+        TeachModeControlCommand {
+            buffer: [position, orientation],
+            has_orientation: true,
+        }
+    }
+}
+impl Command for TeachModeControlCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::TeachModeControl
+    }
+
+    fn data(&self) -> &[u8] {
+        if self.has_orientation {
+            &self.buffer[..]
+        } else {
+            &self.buffer[..1]
+        }
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct RequestTeachModeStatusCommand {
+    buffer: [u8; 1],
+}
+impl RequestTeachModeStatusCommand {
+    pub fn new(abort: bool) -> Self {
+        RequestTeachModeStatusCommand {
+            buffer: [if abort { 1 } else { 0 }],
+        }
+    }
+}
+impl Command for RequestTeachModeStatusCommand {
+    type Response = (u8, TeachModeStatus);
+
+    fn header(&self) -> Header {
+        Header::RequestTeachStatus
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    // Returns (number of coins, TeachModeStatus)
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            2 => Ok((
+                response_payload[0],
+                TeachModeStatus::from(response_payload[1]),
+            )),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                2,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ConfigurationToEepromCommand;
+impl Command for ConfigurationToEepromCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ConfigurationToEEPROM
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// Replies with ack
+    fn parse_response(&self, payload: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        match payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(0, payload.len())),
+        }
+    }
+}
+
+pub struct CountersToEepromCommand;
+impl Command for CountersToEepromCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::CountersToEEPROM
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(&self, payload: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        match payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(0, payload.len())),
+        }
+    }
+}
+
+pub struct RequestRejectCounterCommand;
+impl Command for RequestRejectCounterCommand {
+    type Response = u32;
+
+    fn header(&self) -> Header {
+        Header::RequestRejectCounter
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            3 => Ok(u32::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                0u8,
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                3,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestFraudCounterCommand;
+impl Command for RequestFraudCounterCommand {
+    type Response = u32;
+
+    fn header(&self) -> Header {
+        Header::RequestFraudCounter
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            3 => Ok(u32::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                0u8,
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                3,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+// TODO: Implement this
+pub struct KeypadControlCommand;
+
+pub struct ModifyDefaultSorterPathCommand {
+    buffer: [u8; 1],
+}
+impl ModifyDefaultSorterPathCommand {
+    pub fn new(sorter: u8) -> Self {
+        ModifyDefaultSorterPathCommand { buffer: [sorter] }
+    }
+}
+impl Command for ModifyDefaultSorterPathCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifyDefaultSorterPath
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct RequestDefaultSorterPathCommand;
+impl Command for RequestDefaultSorterPathCommand {
+    type Response = SorterPath;
+
+    fn header(&self) -> Header {
+        Header::RequestDefaultSorterPath
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            1 => Ok(SorterPath::from(response_payload[0])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                1,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ModifyPayoutCapacityCommand {
+    buffer: [u8; 3],
+    has_hopper_number: bool,
+}
+impl ModifyPayoutCapacityCommand {
+    pub fn new(capacity: u16) -> Self {
+        ModifyPayoutCapacityCommand {
+            buffer: [(capacity & 0xFF) as u8, ((capacity >> 8) & 0xFF) as u8, 0u8],
+            has_hopper_number: false,
+        }
+    }
+
+    pub fn new_with_hopper(hopper_number: u8, capacity: u16) -> Self {
+        ModifyPayoutCapacityCommand {
+            buffer: [
+                hopper_number,
+                (capacity & 0xFF) as u8,
+                ((capacity >> 8) & 0xFF) as u8,
+            ],
+            has_hopper_number: true,
+        }
+    }
+}
+impl Command for ModifyPayoutCapacityCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifyPayoutCapacity
+    }
+
+    fn data(&self) -> &[u8] {
+        if self.has_hopper_number {
+            &self.buffer[..]
+        } else {
+            &self.buffer[..2]
+        }
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct RequestPayoutCapacityCommand {
+    buffer: [u8; 1],
+    has_hopper_number: bool,
+}
+impl RequestPayoutCapacityCommand {
+    pub fn new() -> Self {
+        RequestPayoutCapacityCommand {
+            buffer: [0u8],
+            has_hopper_number: false,
+        }
+    }
+
+    pub fn new_with_hopper(hopper_number: u8) -> Self {
+        RequestPayoutCapacityCommand {
+            buffer: [hopper_number],
+            has_hopper_number: true,
+        }
+    }
+}
+impl Command for RequestPayoutCapacityCommand {
+    type Response = u16;
+
+    fn header(&self) -> Header {
+        Header::RequestPayoutCapacity
+    }
+
+    fn data(&self) -> &[u8] {
+        if self.has_hopper_number {
+            &self.buffer[..]
+        } else {
+            &[]
+        }
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            2 => Ok(u16::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                2,
                 response_payload.len(),
             )),
         }

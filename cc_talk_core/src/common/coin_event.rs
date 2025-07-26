@@ -6,13 +6,12 @@ pub enum SorterPath {
     NotSupported,
     Path(u8),
 }
-impl TryFrom<u8> for SorterPath {
-    type Error = ();
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+impl From<u8> for SorterPath {
+    fn from(value: u8) -> Self {
         match value {
-            0 => Ok(SorterPath::NotSupported),
-            _ => Ok(SorterPath::Path(value)),
+            0 => SorterPath::NotSupported,
+            _ => SorterPath::Path(value),
         }
     }
 }
@@ -38,7 +37,7 @@ impl CoinEvent {
             ),
             _ => CoinEvent::Credit(CoinCredit {
                 credit: result_a,
-                sorter_path: SorterPath::try_from(result_b).unwrap_or(SorterPath::NotSupported),
+                sorter_path: SorterPath::from(result_b),
             }),
         }
     }
