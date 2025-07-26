@@ -6,6 +6,7 @@ pub mod coin_acceptor_errors;
 pub mod coin_calibration_codes;
 pub mod coin_event;
 pub mod coin_value_format;
+pub mod currency;
 pub mod data_storage;
 pub mod date;
 pub mod device;

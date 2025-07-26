@@ -32,6 +32,7 @@ pub mod cc_talk {
     pub use crate::common::coin_acceptor_errors::*;
     pub use crate::common::coin_event::*;
     pub use crate::common::coin_value_format::*;
+    pub use crate::common::currency::*;
     pub use crate::common::data_storage::*;
     pub use crate::common::date::*;
     pub use crate::common::device::*;
