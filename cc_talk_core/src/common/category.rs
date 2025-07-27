@@ -307,6 +307,31 @@ impl AddressMode {
             AddressMode::SerialCommandNonVolatile => 128,
         }
     }
+
+    pub fn from_value(value: u8) -> Option<Self> {
+        match value {
+            0 => Some(AddressMode::Other),
+            1 => Some(AddressMode::Flash),
+            2 => Some(AddressMode::ROM),
+            4 => Some(AddressMode::EEPROM),
+            8 => Some(AddressMode::InterfaceConnector),
+            16 => Some(AddressMode::PCBLink),
+            32 => Some(AddressMode::Switch),
+            64 => Some(AddressMode::SerialCommandVolatile),
+            128 => Some(AddressMode::SerialCommandNonVolatile),
+            _ => None,
+        }
+    }
+
+    pub fn available_address_modes(mask: u8) -> heapless::Vec<AddressMode, 8> {
+        let mut modes = heapless::Vec::new();
+        for i in 0..=7 {
+            if mask & (1 << i) != 0 {
+                AddressMode::from_value(1 << i).map(|mode| modes.push(mode).ok());
+            }
+        }
+        modes
+    }
 }
 
 #[cfg(test)]

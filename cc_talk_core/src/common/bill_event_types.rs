@@ -145,3 +145,142 @@ impl core::fmt::Display for BillEventReason {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BillValidatorPollResult {
+    pub event_counter: u8,
+    pub events: heapless::Vec<BillEvent, 5>,
+}
+impl BillValidatorPollResult {
+    pub fn new(event_counter: u8) -> Self {
+        BillValidatorPollResult {
+            event_counter,
+            events: heapless::Vec::new(),
+        }
+    }
+
+    pub fn add_event(&mut self, event: BillEvent) {
+        self.events.push(event).ok();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BillValidatorPollResultError {
+    NotEnoughEvents,
+    TooManyEvents,
+    InvalidPayload,
+}
+impl TryFrom<&[u8]> for BillValidatorPollResult {
+    type Error = BillValidatorPollResultError;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        if value.is_empty() {
+            return Err(BillValidatorPollResultError::InvalidPayload);
+        }
+
+        let announced_events = value[0];
+        if announced_events > 5 {
+            return Err(BillValidatorPollResultError::TooManyEvents);
+        }
+
+        let expected_len = (announced_events as usize * 2) + 1;
+        if value.len() != expected_len {
+            return Err(BillValidatorPollResultError::NotEnoughEvents);
+        }
+
+        let mut events = heapless::Vec::new();
+        for i in 0..announced_events {
+            let index_base = (i * 2) as usize + 1;
+            let result_a = value[index_base];
+            let result_b = value[index_base + 1];
+            if let Some(event) = BillEvent::from_result(result_a, result_b) {
+                events.push(event).ok();
+            }
+        }
+
+        Ok(BillValidatorPollResult {
+            event_counter: announced_events,
+            events,
+        })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_zero_events() {
+        let buffer = [0u8];
+        let result =
+            BillValidatorPollResult::try_from(&buffer[..]).expect("Failed to parse zero events");
+        assert_eq!(result.event_counter, 0);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn should_error_on_empty() {
+        let buffer = [];
+        let result = BillValidatorPollResult::try_from(&buffer[..]);
+        assert!(matches!(
+            result,
+            Err(BillValidatorPollResultError::InvalidPayload)
+        ));
+    }
+
+    #[test]
+    fn too_many_events_errors() {
+        let buffer = [6u8];
+        let result = BillValidatorPollResult::try_from(&buffer[..]);
+        assert!(matches!(
+            result,
+            Err(BillValidatorPollResultError::TooManyEvents)
+        ));
+    }
+
+    #[test]
+    fn error_on_unexpected_len() {
+        let buffer = [3u8, 1, 2, 3, 4];
+        let result = BillValidatorPollResult::try_from(&buffer[..]);
+        assert!(matches!(
+            result,
+            Err(BillValidatorPollResultError::NotEnoughEvents)
+        ));
+    }
+
+    #[test]
+    fn prse_events() {
+        let buffer = [
+            5u8, //  5 events
+            1, 0, // credit 1
+            255, 1, // pending credit 255
+            0, 1, // status returned from escrow
+            0, 2, // rject due to validation fail
+            0, 19, // fatal error anti string mechanism faulty
+        ];
+
+        let result =
+            BillValidatorPollResult::try_from(&buffer[..]).expect("Failed to parse events");
+
+        assert_eq!(result.event_counter, 5);
+        assert_eq!(result.events.len(), 5);
+        assert_eq!(result.events[0], BillEvent::Credit(1));
+        assert_eq!(result.events[1], BillEvent::PendingCredit(255));
+        assert_eq!(
+            result.events[2],
+            BillEvent::Status(BillEventReason::BillReturnedFromEscrow)
+        );
+        assert_eq!(
+            result.events[3],
+            BillEvent::Reject(BillEventReason::InvalidBillValidationFailed)
+        );
+        assert_eq!(
+            result.events[4],
+            BillEvent::FatalError(BillEventReason::AntiStringMechanismFaulty)
+        );
+    }
+}
