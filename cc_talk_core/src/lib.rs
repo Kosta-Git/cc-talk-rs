@@ -26,6 +26,7 @@ pub use common::packet::Header;
 
 pub mod cc_talk {
     pub use crate::common::bill_event_types::*;
+    pub use crate::common::bill_routing::*;
     pub use crate::common::bit_mask::*;
     pub use crate::common::category::*;
     pub use crate::common::checksum::*;

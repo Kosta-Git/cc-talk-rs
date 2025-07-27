@@ -2,9 +2,10 @@
 use cc_talk_core::{
     Fault, Header, HopperFlag,
     cc_talk::{
-        AddressMode, BillValidatorPollResult, BillValidatorPollResultError, BitMask, BitMaskError,
-        CoinAcceptorPollResult, CurrencyToken, CurrencyTokenError, FaultCode, HopperDispenseStatus,
-        HopperStatus, PowerOption, RequestOptionFlags, SorterPath, TeachModeStatus,
+        AddressMode, BillRouteCode, BillRoutingError, BillValidatorPollResult,
+        BillValidatorPollResultError, BitMask, BitMaskError, CoinAcceptorPollResult, CurrencyToken,
+        CurrencyTokenError, FaultCode, HopperDispenseStatus, HopperStatus, PowerOption,
+        RequestOptionFlags, SorterPath, TeachModeStatus,
     },
 };
 
@@ -2293,3 +2294,77 @@ impl Command for RequestBillIdCommand {
 
 // TODO: Implement this, however the scaling factor is hardcoded for now
 pub struct RequestCountryScalingFactorCommand;
+
+pub struct RequestBillPositionCommand {
+    buffer: [u8; 2],
+}
+impl RequestBillPositionCommand {
+    pub fn new(country_code: &str) -> Self {
+        RequestBillPositionCommand {
+            buffer: [country_code.as_bytes()[0], country_code.as_bytes()[1]],
+        }
+    }
+}
+impl Command for RequestBillPositionCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::RequestBillPosition
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            1..=255 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                1,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RouteBillCommand {
+    buffer: [u8; 1],
+}
+impl RouteBillCommand {
+    pub fn new(command: BillRouteCode) -> Self {
+        RouteBillCommand {
+            buffer: [command as u8],
+        }
+    }
+}
+impl Command for RouteBillCommand {
+    type Response = Option<BillRoutingError>;
+
+    fn header(&self) -> Header {
+        Header::RouteBill
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(None),
+            1 => match BillRoutingError::try_from(response_payload[0]) {
+                Ok(error) => Ok(Some(error)),
+                Err(_) => Ok(None),
+            },
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}

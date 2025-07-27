@@ -1,4 +1,5 @@
 pub mod bill_event_types;
+pub mod bill_routing;
 pub mod bit_mask;
 pub mod category;
 pub mod checksum;
