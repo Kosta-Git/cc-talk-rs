@@ -1,7 +1,4 @@
-use cc_talk_core::{
-    Header,
-    cc_talk::{DataStorage, RTBYDate, SerialCode},
-};
+use cc_talk_core::cc_talk::{DataStorage, Header, RTBYDate, SerialCode};
 
 use super::{
     super::command::{BelongsTo, Command, ParseResponseError},
@@ -612,7 +609,7 @@ impl BelongsTo<CorePlusCommandSet> for ResetDeviceCommand {}
 
 #[cfg(test)]
 mod test {
-    use cc_talk_core::{Header, cc_talk::MemoryType};
+    use cc_talk_core::cc_talk::MemoryType;
 
     use super::*;
 

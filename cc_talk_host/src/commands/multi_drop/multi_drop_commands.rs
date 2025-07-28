@@ -1,4 +1,4 @@
-use cc_talk_core::{Address, Header};
+use cc_talk_core::cc_talk::{Address, Header};
 
 use super::{
     super::command::{BelongsTo, Command, ParseResponseError},

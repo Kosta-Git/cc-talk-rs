@@ -1,4 +1,4 @@
-use crate::CoinAcceptorError;
+use crate::cc_talk::CoinAcceptorError;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

@@ -1,7 +1,4 @@
-use crate::{
-    cc_talk::{Packet, SOURCE_OFFSET},
-    Device,
-};
+use crate::cc_talk::{ChecksumType, Device, Packet, SOURCE_OFFSET};
 
 pub fn serialize<B>(device: &Device, packet: &mut Packet<B>) -> Result<(), SerializationError>
 where
@@ -13,7 +10,7 @@ where
     );
 
     match device.checksum_type() {
-        crate::ChecksumType::Crc8 => {
+        ChecksumType::Crc8 => {
             let checksum = crate::common::checksum::crc8(packet.as_slice());
             let checksum_index = packet
                 .get_checksum_offset()
@@ -25,7 +22,7 @@ where
 
             Ok(())
         }
-        crate::ChecksumType::Crc16 => {
+        ChecksumType::Crc16 => {
             let checksum = crate::common::checksum::crc16(packet.as_slice());
             let checksum_index = packet
                 .get_checksum_offset()
@@ -63,13 +60,15 @@ impl core::fmt::Display for SerializationError {
 
 #[cfg(test)]
 mod test {
+    use crate::cc_talk::{Category, Device};
+
     use super::*;
 
     #[test]
     fn simple_checksum_verify_test() {
         let buffer: [u8; 5] = [1, 0, 2, 0, 0];
         let mut packet = Packet::new(buffer);
-        let device = Device::new(1, crate::Category::Unknown, crate::ChecksumType::Crc8);
+        let device = Device::new(1, Category::Unknown, ChecksumType::Crc8);
         let result = serialize(&device, &mut packet);
 
         assert!(result.is_ok());

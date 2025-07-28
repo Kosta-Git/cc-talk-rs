@@ -1,8 +1,8 @@
-use cc_talk_core::Category;
+use cc_talk_core::cc_talk::Category;
 
 use super::{
     command::{BelongsTo, CommandSet},
-    core::{CoreCommandSet, core_commands::SimplePollCommand},
+    core::CoreCommandSet,
     core_plus::CorePlusCommandSet,
     multi_drop::MdbCommandSet,
 };

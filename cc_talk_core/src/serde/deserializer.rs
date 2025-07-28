@@ -1,4 +1,4 @@
-use crate::{cc_talk::Packet, ChecksumType};
+use crate::cc_talk::{ChecksumType, Packet};
 
 /// Deserializes a ccTalk packet and verifies its checksum.
 /// Returns the reply to address if successful, or an error if the checksum is invalid or the

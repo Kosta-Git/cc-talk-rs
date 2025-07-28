@@ -1,4 +1,4 @@
-use cc_talk_core::{Category, Header, cc_talk::Manufacturer};
+use cc_talk_core::cc_talk::{Category, Header, Manufacturer};
 
 use super::{
     super::command::{BelongsTo, Command, ParseResponseError},
@@ -164,8 +164,6 @@ impl BelongsTo<CoreCommandSet> for RequestEncryptionSupportCommand {}
 
 #[cfg(test)]
 mod test {
-    use cc_talk_core::Category;
-
     use super::*;
 
     #[test]

@@ -1,4 +1,6 @@
-use cc_talk_core::{Category, Header};
+#![allow(dead_code)]
+
+use cc_talk_core::cc_talk::{Category, Header};
 
 /// Defines which command are available to a category.
 /// This trait is an utility design to help users know which commands are available for their

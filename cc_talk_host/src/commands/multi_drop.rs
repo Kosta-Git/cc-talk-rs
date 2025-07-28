@@ -1,4 +1,4 @@
-use cc_talk_core::Category;
+use cc_talk_core::cc_talk::Category;
 
 use super::command::CommandSet;
 
