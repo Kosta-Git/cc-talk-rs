@@ -40,4 +40,3 @@ impl From<u8> for ChangerDevice {
         }
     }
 }
-
