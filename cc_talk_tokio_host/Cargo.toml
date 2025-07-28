@@ -1,0 +1,14 @@
+[package]
+name = "cc_talk_tokio_host"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cc_talk_core = { path = "../cc_talk_core" }
+cc_talk_host = { path = "../cc_talk_host", features = ["tracing"] }
+
+tokio = { version = "1.47.0", features = [
+  "full", # TODO: Find out which features are actually needed
+] }
+tokio-serial = "5.4.5"
+tracing = { version = "0.1.41" }

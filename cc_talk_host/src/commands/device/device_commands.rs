@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 use cc_talk_core::cc_talk::{
-    BillRouteCode, BillRoutingError, BillValidatorPollResult, BillValidatorPollResultError,
-    BitMask, BitMaskError, ChangerDevice, ChangerError, ChangerFlags, ChangerPollResult,
-    CoinAcceptorPollResult, CurrencyToken, CurrencyTokenError, EscrowFaultCode, EscrowLevelStatus,
-    EscrowOperatingStatus, EscrowServiceStatus, Fault, FaultCode, FirmwareStorageType, Header,
-    HopperDispenseStatus, HopperDispenseValueStatus, HopperFlag, HopperStatus, LampControl,
-    PowerOption, RequestOptionFlags, SorterPath, StackerCycleError, TeachModeStatus,
-    parse_changer_flags_heapless,
+    parse_changer_flags_heapless, BillRouteCode, BillRoutingError, BillValidatorPollResult,
+    BillValidatorPollResultError, BitMask, BitMaskError, ChangerDevice, ChangerError, ChangerFlags,
+    ChangerPollResult, CoinAcceptorPollResult, CurrencyToken, CurrencyTokenError, EscrowFaultCode,
+    EscrowLevelStatus, EscrowOperatingStatus, EscrowServiceStatus, Fault, FaultCode,
+    FirmwareStorageType, Header, HopperDispenseStatus, HopperDispenseValueStatus, HopperFlag,
+    HopperStatus, LampControl, PowerOption, RequestOptionFlags, SorterPath, StackerCycleError,
+    TeachModeStatus,
 };
 
 use crate::commands::command::{Command, ParseResponseError};
