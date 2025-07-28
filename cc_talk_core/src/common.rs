@@ -15,6 +15,7 @@ pub mod currency;
 pub mod data_storage;
 pub mod date;
 pub mod device;
+pub mod escrow_status;
 pub mod fault_code;
 pub mod hopper_flags;
 pub mod hopper_status;

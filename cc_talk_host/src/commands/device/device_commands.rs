@@ -5,8 +5,9 @@ use cc_talk_core::{
         AddressMode, BillRouteCode, BillRoutingError, BillValidatorPollResult,
         BillValidatorPollResultError, BitMask, BitMaskError, ChangerDevice, ChangerError,
         ChangerFlags, ChangerPollResult, CoinAcceptorPollResult, CurrencyToken, CurrencyTokenError,
-        FaultCode, FirmwareStorageType, HopperDispenseStatus, HopperDispenseValueStatus,
-        HopperStatus, LampControl, PowerOption, RequestOptionFlags, SorterPath, StackerCycleError,
+        EscrowFaultCode, EscrowLevelStatus, EscrowOperatingStatus, EscrowServiceStatus, FaultCode,
+        FirmwareStorageType, HopperDispenseStatus, HopperDispenseValueStatus, HopperStatus,
+        LampControl, PowerOption, RequestOptionFlags, SorterPath, StackerCycleError,
         TeachModeStatus, parse_changer_flags_heapless,
     },
 };
@@ -3577,6 +3578,253 @@ impl Command for RequestCashBoxValueCommand {
             ])),
             _ => Err(ParseResponseError::DataLengthMismatch(
                 4,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ModifyRtcCommand {
+    buffer: [u8; 4],
+}
+impl ModifyRtcCommand {
+    pub fn new(unix_epoch_seconds: u32) -> Self {
+        ModifyRtcCommand {
+            buffer: unix_epoch_seconds.to_le_bytes(),
+        }
+    }
+}
+impl Command for ModifyRtcCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifyRealTimeClock
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestRtcCommand;
+impl Command for RequestRtcCommand {
+    type Response = u32; // Unix epoch seconds
+
+    fn header(&self) -> Header {
+        Header::RequestRealTimeClock
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            4 => Ok(u32::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                response_payload[3],
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                4,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+// TODO: implement when encryption is supported
+pub struct ReadEncryptedEventsCommand;
+pub struct RequestEncryptedHopperStatusCommand;
+pub struct RequestEncryptedMonetaryIdCommand;
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum DivertMode {
+    AcceptCoins = 0,
+    ReturnCoins = 1,
+}
+pub struct OperateEscrowCommand {
+    buffer: [u8; 1],
+}
+impl OperateEscrowCommand {
+    pub fn new(divert_mode: DivertMode) -> Self {
+        OperateEscrowCommand {
+            buffer: [divert_mode as u8],
+        }
+    }
+}
+impl Command for OperateEscrowCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::OperateEscrow
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        // No response expected, just an empty payload
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestEscrowStatusCommand;
+impl Command for RequestEscrowStatusCommand {
+    type Response = (EscrowOperatingStatus, EscrowLevelStatus, EscrowFaultCode);
+
+    fn header(&self) -> Header {
+        Header::RequestEscrowStatus
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            3 => {
+                let operating_status = EscrowOperatingStatus::try_from(response_payload[0])
+                    .map_err(|_| ParseResponseError::ParseError("Invalid EscrowOperatingStatus"))?;
+                let level_status = EscrowLevelStatus::try_from(response_payload[1])
+                    .map_err(|_| ParseResponseError::ParseError("Invalid EscrowLevelStatus"))?;
+                let fault_code = EscrowFaultCode::from(response_payload[2]);
+
+                Ok((operating_status, level_status, fault_code))
+            }
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                3,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestServiceStatusCommand {
+    buffer: [u8; 1],
+}
+impl RequestServiceStatusCommand {
+    pub fn new_report() -> Self {
+        RequestServiceStatusCommand { buffer: [0] }
+    }
+
+    pub fn new_clear_report() -> Self {
+        RequestServiceStatusCommand { buffer: [1] }
+    }
+}
+impl Command for RequestServiceStatusCommand {
+    type Response = Option<EscrowServiceStatus>;
+
+    fn header(&self) -> Header {
+        Header::RequestServiceStatus
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(None),
+            1 => {
+                let status = EscrowServiceStatus::try_from(response_payload[0])
+                    .map_err(|_| ParseResponseError::ParseError("Invalid EscrowServiceStatus"))?;
+
+                Ok(Some(status))
+            }
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                1,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ClearCommsStatusVariablesCommand;
+impl Command for ClearCommsStatusVariablesCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ClearCommsStatusVariable
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestCommsStatusVariablesCommand;
+impl Command for RequestCommsStatusVariablesCommand {
+    type Response = (u8, u8, u8);
+
+    fn header(&self) -> Header {
+        Header::RequestCommsStatusVariables
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            3 => Ok((
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+            )),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                3,
                 response_payload.len(),
             )),
         }

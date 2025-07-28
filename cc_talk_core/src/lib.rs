@@ -42,6 +42,7 @@ pub mod cc_talk {
     pub use crate::common::data_storage::*;
     pub use crate::common::date::*;
     pub use crate::common::device::*;
+    pub use crate::common::escrow_status::*;
     pub use crate::common::fault_code::*;
     pub use crate::common::hopper_flags::*;
     pub use crate::common::hopper_status::*;
