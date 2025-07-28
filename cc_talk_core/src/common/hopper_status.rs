@@ -133,6 +133,91 @@ impl core::convert::From<HopperDispenseStatus> for [u8; 4] {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct HopperDispenseValueStatus {
+    pub event_counter: u8,
+    pub value_remaining: u16,
+    pub paid: u16,
+    pub unpaid: u16,
+}
+
+impl HopperDispenseValueStatus {
+    pub fn new(event_counter: u8, remaining: u16, paid: u16, unpaid: u16) -> Self {
+        Self {
+            event_counter,
+            value_remaining: remaining,
+            paid,
+            unpaid,
+        }
+    }
+
+    pub fn next_event_counter(&self) -> u8 {
+        match self.event_counter {
+            u8::MAX => 1, // 0 should only be used on reset.
+            _ => self.event_counter + 1,
+        }
+    }
+
+    pub fn payout_requested(&self, value: u16) -> HopperDispenseValueStatus {
+        HopperDispenseValueStatus {
+            event_counter: self.next_event_counter(),
+            value_remaining: self.value_remaining.saturating_add(value),
+            paid: 0,
+            unpaid: 0,
+        }
+    }
+
+    pub fn paid(&self, value: u16) -> HopperDispenseValueStatus {
+        HopperDispenseValueStatus {
+            event_counter: self.next_event_counter(),
+            value_remaining: self.value_remaining.saturating_sub(value),
+            paid: self.paid.saturating_add(value),
+            unpaid: self.unpaid,
+        }
+    }
+
+    pub fn unpaid(&self, value: u16) -> HopperDispenseValueStatus {
+        HopperDispenseValueStatus {
+            event_counter: self.next_event_counter(),
+            value_remaining: self.value_remaining.saturating_sub(value),
+            paid: self.paid,
+            unpaid: self.unpaid.saturating_add(value),
+        }
+    }
+}
+
+impl core::convert::From<[u8; 7]> for HopperDispenseValueStatus {
+    fn from(status: [u8; 7]) -> Self {
+        let value = u16::from_le_bytes([status[1], status[2]]);
+        let paid = u16::from_le_bytes([status[3], status[4]]);
+        let unpaid = u16::from_le_bytes([status[5], status[6]]);
+        Self {
+            event_counter: status[0],
+            value_remaining: value,
+            paid,
+            unpaid,
+        }
+    }
+}
+
+impl core::convert::From<HopperDispenseValueStatus> for [u8; 7] {
+    fn from(status: HopperDispenseValueStatus) -> Self {
+        let remaining = status.value_remaining.to_le_bytes();
+        let paid = status.paid.to_le_bytes();
+        let unpaid = status.unpaid.to_le_bytes();
+        [
+            status.event_counter,
+            remaining[0],
+            remaining[1],
+            paid[0],
+            paid[1],
+            unpaid[0],
+            unpaid[1],
+        ]
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

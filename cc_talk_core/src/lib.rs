@@ -40,6 +40,7 @@ pub mod cc_talk {
     pub use crate::common::fault_code::*;
     pub use crate::common::hopper_flags::*;
     pub use crate::common::hopper_status::*;
+    pub use crate::common::lamp_control::*;
     pub use crate::common::manufacturers::*;
     pub use crate::common::option_flags::*;
     pub use crate::common::packet::*;

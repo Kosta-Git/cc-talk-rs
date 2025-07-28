@@ -104,3 +104,23 @@ impl TryFrom<u8> for MemoryType {
         }
     }
 }
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum FirmwareStorageType {
+    RomOrEprom = 0,
+    FlashOrEeprom = 1,
+}
+
+impl TryFrom<u8> for FirmwareStorageType {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(FirmwareStorageType::RomOrEprom),
+            1 => Ok(FirmwareStorageType::FlashOrEeprom),
+            _ => Err(()),
+        }
+    }
+}

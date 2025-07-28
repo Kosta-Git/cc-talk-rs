@@ -39,3 +39,23 @@ impl TryFrom<u8> for BillRoutingError {
         }
     }
 }
+
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum StackerCycleError {
+    StackerFault = 254,
+    StackerNotFitted = 255,
+}
+
+impl TryFrom<u8> for StackerCycleError {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            254 => Ok(StackerCycleError::StackerFault),
+            255 => Ok(StackerCycleError::StackerNotFitted),
+            _ => Err(()),
+        }
+    }
+}

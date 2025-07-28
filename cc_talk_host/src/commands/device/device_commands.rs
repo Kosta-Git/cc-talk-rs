@@ -4,8 +4,9 @@ use cc_talk_core::{
     cc_talk::{
         AddressMode, BillRouteCode, BillRoutingError, BillValidatorPollResult,
         BillValidatorPollResultError, BitMask, BitMaskError, CoinAcceptorPollResult, CurrencyToken,
-        CurrencyTokenError, FaultCode, HopperDispenseStatus, HopperStatus, PowerOption,
-        RequestOptionFlags, SorterPath, TeachModeStatus,
+        CurrencyTokenError, FaultCode, FirmwareStorageType, HopperDispenseStatus,
+        HopperDispenseValueStatus, HopperStatus, LampControl, PowerOption, RequestOptionFlags,
+        SorterPath, StackerCycleError, TeachModeStatus,
     },
 };
 
@@ -2365,6 +2366,907 @@ impl Command for RouteBillCommand {
                 0,
                 response_payload.len(),
             )),
+        }
+    }
+}
+
+pub struct ModifyBillOperatingModeCommand {
+    buffer: [u8; 1],
+}
+impl ModifyBillOperatingModeCommand {
+    pub fn new(use_stacker: bool, use_escrow: bool) -> Self {
+        let mut mask = 0u8;
+        if use_stacker {
+            mask += 1;
+        }
+
+        if use_escrow {
+            mask += 2;
+        }
+
+        ModifyBillOperatingModeCommand { buffer: [mask] }
+    }
+}
+impl Command for ModifyBillOperatingModeCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifyBillOperatingMode
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct RequestBillOperatingModeCommand;
+impl Command for RequestBillOperatingModeCommand {
+    type Response = (bool, bool); // (use_stacker, use_escrow)
+
+    fn header(&self) -> Header {
+        Header::RequestBillOperatingMode
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            1 => Ok((
+                response_payload[0] & 0x01 != 0,
+                response_payload[0] & 0x02 != 0,
+            )),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                1,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct TestLampsCommand {
+    buffer: [u8; 2],
+}
+impl TestLampsCommand {
+    pub fn new(lamp: u8, command: LampControl) -> Self {
+        TestLampsCommand {
+            buffer: [lamp, command.into()],
+        }
+    }
+}
+impl Command for TestLampsCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::TestLamps
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestIndividualAcceptCounterCommand {
+    buffer: [u8; 1],
+}
+impl RequestIndividualAcceptCounterCommand {
+    pub fn new(bill_or_coin_type: u8) -> Self {
+        RequestIndividualAcceptCounterCommand {
+            buffer: [bill_or_coin_type],
+        }
+    }
+}
+impl Command for RequestIndividualAcceptCounterCommand {
+    type Response = u32;
+
+    fn header(&self) -> Header {
+        Header::RequestIndividualAcceptCounter
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            3 => Ok(u32::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                0u8,
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                3,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ReadOptoVoltagesCommand;
+impl Command for ReadOptoVoltagesCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ReadOptoVoltages
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    // Device specific, look at your device manual
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            1..=2 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                1,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct PerformStackerCycleCommand;
+impl Command for PerformStackerCycleCommand {
+    type Response = Option<StackerCycleError>;
+
+    fn header(&self) -> Header {
+        Header::PerformStackerCycle
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    // Device specific, no validation/parsing is provided.
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            1 => StackerCycleError::try_from(response_payload[0])
+                .map(Some)
+                .map_err(|_| ParseResponseError::ParseError("Invalid stacker cycle error")),
+            _ => Ok(None),
+        }
+    }
+}
+
+pub struct OperateBiDirectionalMotorsCommand {
+    buffer: [u8; 3],
+}
+impl OperateBiDirectionalMotorsCommand {
+    pub fn new(motors: u8, directions: u8, speed: u8) -> Self {
+        OperateBiDirectionalMotorsCommand {
+            buffer: [motors, directions, speed],
+        }
+    }
+}
+impl Command for OperateBiDirectionalMotorsCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::OperateBiDirectionalMotors
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestCurrencyRevisionCommand {
+    buffer: [u8; 2],
+    has_country_code: bool,
+}
+impl RequestCurrencyRevisionCommand {
+    pub fn new() -> Self {
+        RequestCurrencyRevisionCommand {
+            buffer: [0u8, 0u8],
+            has_country_code: false,
+        }
+    }
+
+    pub fn build_with_country(country_code: &str) -> Result<Self, ()> {
+        let bytes = country_code.as_bytes();
+        if bytes.len() != 2 {
+            return Err(());
+        }
+
+        Ok(RequestCurrencyRevisionCommand {
+            buffer: [bytes[0], bytes[1]],
+            has_country_code: true,
+        })
+    }
+}
+impl Command for RequestCurrencyRevisionCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::RequestCurrencyRevision
+    }
+
+    fn data(&self) -> &[u8] {
+        if self.has_country_code {
+            &self.buffer[..]
+        } else {
+            &[]
+        }
+    }
+
+    // Returns ascii string
+    fn parse_response(&self, _: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        Ok(())
+    }
+}
+
+pub struct UploadBillTablesCommand {
+    buffer: [u8; 130], // block + line + 128 data
+    data_len: u8,
+}
+impl UploadBillTablesCommand {
+    pub fn new(block: u8, line: u8, data: &[u8]) -> Result<Self, ()> {
+        if data.len() > 128 {
+            return Err(());
+        }
+
+        let mut buffer = [0u8; 130];
+        buffer[0] = block;
+        buffer[1] = line;
+        buffer[2..2 + data.len()].copy_from_slice(data);
+
+        Ok(UploadBillTablesCommand {
+            buffer,
+            data_len: (data.len() + 2) as u8,
+        })
+    }
+}
+impl Command for UploadBillTablesCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::UploadBillTables
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer[..self.data_len as usize]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct BeginBillTableUpgradeCommand;
+impl Command for BeginBillTableUpgradeCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::BeginBillTableUpgrade
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct FinishBillTableUpgradeCommand;
+impl Command for FinishBillTableUpgradeCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::FinishBillTableUpgrade
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestFirmwareUpgradeCapability {
+    buffer: [u8; 1],
+    has_module_identifier: bool,
+}
+impl RequestFirmwareUpgradeCapability {
+    pub fn new() -> Self {
+        RequestFirmwareUpgradeCapability {
+            buffer: [0],
+            has_module_identifier: false,
+        }
+    }
+
+    pub fn new_with_module_identifier(module_identifier: u8) -> Self {
+        RequestFirmwareUpgradeCapability {
+            buffer: [module_identifier],
+            has_module_identifier: true,
+        }
+    }
+}
+impl Command for RequestFirmwareUpgradeCapability {
+    type Response = FirmwareStorageType;
+
+    fn header(&self) -> Header {
+        Header::RequestFirmwareUpgradeCapability
+    }
+
+    fn data(&self) -> &[u8] {
+        if self.has_module_identifier {
+            &self.buffer[..]
+        } else {
+            &[]
+        }
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            1 => FirmwareStorageType::try_from(response_payload[0])
+                .map_err(|_| ParseResponseError::ParseError("Invalid firmware storage type")),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct UploadFirmwareCommand {
+    buffer: [u8; 130], // block + line + 128 data
+    data_len: u8,
+}
+impl UploadFirmwareCommand {
+    pub fn new(block: u8, line: u8, data: &[u8]) -> Result<Self, ()> {
+        if data.len() > 128 {
+            return Err(());
+        }
+
+        let mut buffer = [0u8; 130];
+        buffer[0] = block;
+        buffer[1] = line;
+        buffer[2..2 + data.len()].copy_from_slice(data);
+
+        Ok(UploadFirmwareCommand {
+            buffer,
+            data_len: (data.len() + 2) as u8,
+        })
+    }
+}
+impl Command for UploadFirmwareCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::UploadBillTables
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer[..self.data_len as usize]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct BeginFirmwareUpgradeCommand {
+    buffer: [u8; 1],
+    has_module_identifier: bool,
+}
+impl BeginFirmwareUpgradeCommand {
+    pub fn new() -> Self {
+        BeginFirmwareUpgradeCommand {
+            buffer: [0],
+            has_module_identifier: false,
+        }
+    }
+
+    pub fn new_with_module_identifier(module_identifier: u8) -> Self {
+        BeginFirmwareUpgradeCommand {
+            buffer: [module_identifier],
+            has_module_identifier: true,
+        }
+    }
+}
+impl Command for BeginFirmwareUpgradeCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::BeginFirmwareUpgrade
+    }
+
+    fn data(&self) -> &[u8] {
+        if self.has_module_identifier {
+            &self.buffer[..]
+        } else {
+            &[]
+        }
+    }
+
+    fn parse_response(&self, payload: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        match payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(0, payload.len())),
+        }
+    }
+}
+
+pub struct FinishFirmwareUpgradeCommand;
+impl Command for FinishFirmwareUpgradeCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::FinishFirmwareUpgrade
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct SetAcceptLimitCommand {
+    buffer: [u8; 1],
+}
+impl SetAcceptLimitCommand {
+    pub fn new(limit: u8) -> Self {
+        SetAcceptLimitCommand { buffer: [limit] }
+    }
+}
+impl Command for SetAcceptLimitCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::SetAcceptLimit
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct DispenseHopperValueCommand {
+    buffer: [u8; 10],
+}
+impl DispenseHopperValueCommand {
+    pub fn new(coin_value: u16) -> Self {
+        DispenseHopperValueCommand {
+            buffer: [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                // Value
+                (coin_value & 0xFF) as u8,
+                ((coin_value >> 8) & 0xFF) as u8,
+            ],
+        }
+    }
+
+    pub fn new_with_security_code(security_code: [u8; 8], coin_value: u16) -> Self {
+        DispenseHopperValueCommand {
+            buffer: [
+                security_code[0],
+                security_code[1],
+                security_code[2],
+                security_code[3],
+                security_code[4],
+                security_code[5],
+                security_code[6],
+                security_code[7],
+                // Value
+                (coin_value & 0xFF) as u8,
+                ((coin_value >> 8) & 0xFF) as u8,
+            ],
+        }
+    }
+}
+impl Command for DispenseHopperValueCommand {
+    type Response = Option<u8>;
+
+    fn header(&self) -> Header {
+        Header::DispenseHopperValue
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(None),
+            1 => Ok(Some(response_payload[0])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestHopperPollingValueCommand;
+impl Command for RequestHopperPollingValueCommand {
+    type Response = HopperDispenseValueStatus;
+
+    fn header(&self) -> Header {
+        Header::RequestHopperPollingValue
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            7 => Ok(HopperDispenseValueStatus::from([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                response_payload[3],
+                response_payload[4],
+                response_payload[5],
+                response_payload[6],
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                7,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct EmergencyStopValueCommand;
+impl Command for EmergencyStopValueCommand {
+    type Response = u16;
+
+    fn header(&self) -> Header {
+        Header::EmergencyStopValue
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            2 => Ok(u16::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                2,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestHopperCoinValueCommand {
+    buffer: [u8; 1],
+}
+impl RequestHopperCoinValueCommand {
+    pub fn new(coin_type: u8) -> Self {
+        RequestHopperCoinValueCommand {
+            buffer: [coin_type],
+        }
+    }
+}
+impl Command for RequestHopperCoinValueCommand {
+    type Response = (CurrencyToken, u16); // Currency token, coin value
+
+    fn header(&self) -> Header {
+        Header::RequestHopperCoinValue
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            8 => {
+                let coin_str = core::str::from_utf8(&response_payload[0..=6])
+                    .map_err(|_| ParseResponseError::ParseError("Invalid UTF-8 in coin string"))?;
+                let token = CurrencyToken::build(coin_str).map_err(|err| match err {
+                    CurrencyTokenError::InvalidFormat => {
+                        ParseResponseError::ParseError("invalid coin string format")
+                    }
+                    CurrencyTokenError::ValueStringTooSmall => ParseResponseError::BufferTooSmall,
+                    CurrencyTokenError::CoinNotSupportedByDevice => {
+                        ParseResponseError::ParseError("not supported by device")
+                    }
+                })?;
+                let value = u16::from_le_bytes([response_payload[6], response_payload[7]]);
+                Ok((token, value))
+            }
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                8,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestIndexedHopperDispenseCountCommand {
+    buffer: [u8; 1],
+}
+impl RequestIndexedHopperDispenseCountCommand {
+    pub fn new(coin_type: u8) -> Self {
+        RequestIndexedHopperDispenseCountCommand {
+            buffer: [coin_type],
+        }
+    }
+}
+impl Command for RequestIndexedHopperDispenseCountCommand {
+    type Response = u32; // Dispense count
+
+    fn header(&self) -> Header {
+        Header::RequestIndexedHopperDispenseCount
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            3 => Ok(u32::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                0,
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                3,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ReadBarcodeDataCommand;
+impl Command for ReadBarcodeDataCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ReadBarCodeData
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    /// ASCII or empty
+    fn parse_response(&self, _: &[u8]) -> Result<Self::Response, ParseResponseError> {
+        Ok(())
+    }
+}
+
+pub struct RequestMoneyInCommand;
+impl Command for RequestMoneyInCommand {
+    type Response = u32;
+
+    fn header(&self) -> Header {
+        Header::RequestMoneyIn
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            4 => Ok(u32::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                response_payload[3],
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                4,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestMoneyOutCommand;
+impl Command for RequestMoneyOutCommand {
+    type Response = u32;
+
+    fn header(&self) -> Header {
+        Header::RequestMoneyOut
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            4 => Ok(u32::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                response_payload[3],
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                4,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ClearMoneyCountersCommand;
+impl Command for ClearMoneyCountersCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ClearMoneyCounters
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
         }
     }
 }
