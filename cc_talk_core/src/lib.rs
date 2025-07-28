@@ -7,23 +7,6 @@ mod common;
 mod log;
 mod serde;
 
-pub use common::bill_event_types::BillEvent;
-
-pub use common::category::Address;
-pub use common::category::Category;
-
-pub use common::checksum::ChecksumType;
-
-pub use common::coin_acceptor_errors::CoinAcceptorError;
-
-pub use common::device::Device;
-
-pub use common::fault_code::Fault;
-
-pub use common::hopper_flags::HopperFlag;
-
-pub use common::packet::Header;
-
 pub mod cc_talk {
     pub use crate::common::bill_event_types::*;
     pub use crate::common::bill_routing::*;
