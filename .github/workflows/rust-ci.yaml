@@ -2,26 +2,121 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
-  build:
+  test:
+    name: Test Suite
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, beta, nightly]
+        include:
+          - rust: stable
+            can-fail: false
+          - rust: beta
+            can-fail: false
+          - rust: nightly
+            can-fail: true
+    continue-on-error: ${{ matrix.can-fail }}
 
     steps:
-      - name: checkout
-        uses: actions/checkout@v2
-      - name: install audit
-        run: cargo install cargo-audit
-      - name: build
-        run: cargo build --verbose
-      - name: test
-        run: cargo test --verbose
-      - name: clippy
-        run: cargo clippy --verbose #-- -D warnings
-      - name: audit
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features # -- -D warnings
+
+      - name: Build
+        run: cargo build --all-targets --all-features
+
+      - name: Run tests
+        run: cargo test --all-features --workspace
+
+      - name: Run doc tests
+        run: cargo test --doc
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit
+
+      - name: Run security audit
         run: cargo audit
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-llvm-cov
+        run: cargo install --locked cargo-llvm-cov
+
+      - name: Generate coverage report
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: lcov.info
+          fail_ci_if_error: true
+
+  minimal-versions:
+    name: Minimal Versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-minimal-versions
+        run: cargo install --locked cargo-minimal-versions
+
+      - name: Check minimal versions
+        run: cargo minimal-versions check

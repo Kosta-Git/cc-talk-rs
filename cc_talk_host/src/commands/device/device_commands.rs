@@ -3,10 +3,11 @@ use cc_talk_core::{
     Fault, Header, HopperFlag,
     cc_talk::{
         AddressMode, BillRouteCode, BillRoutingError, BillValidatorPollResult,
-        BillValidatorPollResultError, BitMask, BitMaskError, CoinAcceptorPollResult, CurrencyToken,
-        CurrencyTokenError, FaultCode, FirmwareStorageType, HopperDispenseStatus,
-        HopperDispenseValueStatus, HopperStatus, LampControl, PowerOption, RequestOptionFlags,
-        SorterPath, StackerCycleError, TeachModeStatus,
+        BillValidatorPollResultError, BitMask, BitMaskError, ChangerDevice, ChangerError,
+        ChangerFlags, ChangerPollResult, CoinAcceptorPollResult, CurrencyToken, CurrencyTokenError,
+        FaultCode, FirmwareStorageType, HopperDispenseStatus, HopperDispenseValueStatus,
+        HopperStatus, LampControl, PowerOption, RequestOptionFlags, SorterPath, StackerCycleError,
+        TeachModeStatus, parse_changer_flags_heapless,
     },
 };
 
@@ -3267,6 +3268,317 @@ impl Command for ClearMoneyCountersCommand {
                 0,
                 response_payload.len(),
             ))
+        }
+    }
+}
+
+pub struct PayMoneyOutCommand {
+    buffer: [u8; 4],
+}
+impl PayMoneyOutCommand {
+    pub fn new(amount: u32) -> Self {
+        PayMoneyOutCommand {
+            buffer: amount.to_le_bytes(),
+        }
+    }
+}
+impl Command for PayMoneyOutCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::PayMoneyOut
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct VerifyMoneyOutCommand;
+impl Command for VerifyMoneyOutCommand {
+    type Response = ChangerPollResult;
+
+    fn header(&self) -> Header {
+        Header::VerifyMoneyOut
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            9 => ChangerPollResult::try_from(response_payload)
+                .map_err(|_| ParseResponseError::ParseError("Invalid ChangerPollResult format")),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                9,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestActivityRegisterCommand;
+impl Command for RequestActivityRegisterCommand {
+    type Response = heapless::Vec<ChangerFlags, 13>;
+
+    fn header(&self) -> Header {
+        Header::RequestActivityRegister
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            2 => Ok(parse_changer_flags_heapless(response_payload)),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                2,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestErrorStatusCommand;
+impl Command for RequestErrorStatusCommand {
+    type Response = (ChangerDevice, ChangerError);
+
+    fn header(&self) -> Header {
+        Header::RequestErrorStatus
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            2 => Ok((
+                ChangerDevice::from(response_payload[0]),
+                ChangerError::from(response_payload[1]),
+            )),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                2,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct PurgeHopperCommand {
+    buffer: [u8; 2],
+}
+impl PurgeHopperCommand {
+    // TODO: WH hopper can use the purge hopper command too, from what i experimented they use data
+    // [0], but maybe [0,0]/[255,0] works too
+    pub fn new(hopper_number: u8, count: u8) -> Self {
+        PurgeHopperCommand {
+            buffer: [hopper_number, count],
+        }
+    }
+}
+impl Command for PurgeHopperCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::PurgeHopper
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ModifyHopperBalanceCommand {
+    buffer: [u8; 3],
+}
+impl ModifyHopperBalanceCommand {
+    pub fn new(hopper_number: u8, balance: u16) -> Self {
+        ModifyHopperBalanceCommand {
+            buffer: [
+                hopper_number,
+                (balance & 0xFF) as u8,
+                ((balance >> 8) & 0xFF) as u8,
+            ],
+        }
+    }
+}
+impl Command for ModifyHopperBalanceCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifyHopperBalance
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            0 => Ok(()),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct RequestHopperBalanceCommand {
+    buffer: [u8; 1],
+}
+impl RequestHopperBalanceCommand {
+    pub fn new(hopper_number: u8) -> Self {
+        RequestHopperBalanceCommand {
+            buffer: [hopper_number],
+        }
+    }
+}
+impl Command for RequestHopperBalanceCommand {
+    type Response = (CurrencyToken, u16); // Currency token, balance
+
+    fn header(&self) -> Header {
+        Header::RequestHopperBalance
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            8 => {
+                let coin_str = core::str::from_utf8(&response_payload[0..6])
+                    .map_err(|_| ParseResponseError::ParseError("Invalid UTF-8 in coin string"))?;
+                let token = CurrencyToken::build(coin_str).map_err(|err| match err {
+                    CurrencyTokenError::InvalidFormat => {
+                        ParseResponseError::ParseError("invalid coin string format")
+                    }
+                    CurrencyTokenError::ValueStringTooSmall => ParseResponseError::BufferTooSmall,
+                    CurrencyTokenError::CoinNotSupportedByDevice => {
+                        ParseResponseError::ParseError("not supported by device")
+                    }
+                })?;
+                let count = u16::from_le_bytes([response_payload[6], response_payload[7]]);
+
+                Ok((token, count))
+            }
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                8,
+                response_payload.len(),
+            )),
+        }
+    }
+}
+
+pub struct ModifyCashBoxValueCommand {
+    buffer: [u8; 4],
+}
+impl ModifyCashBoxValueCommand {
+    pub fn new(value: u32) -> Self {
+        ModifyCashBoxValueCommand {
+            buffer: value.to_le_bytes(),
+        }
+    }
+}
+impl Command for ModifyCashBoxValueCommand {
+    type Response = ();
+
+    fn header(&self) -> Header {
+        Header::ModifyCashBoxValue
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        if response_payload.is_empty() {
+            Ok(())
+        } else {
+            Err(ParseResponseError::DataLengthMismatch(
+                0,
+                response_payload.len(),
+            ))
+        }
+    }
+}
+
+pub struct RequestCashBoxValueCommand;
+impl Command for RequestCashBoxValueCommand {
+    type Response = u32;
+
+    fn header(&self) -> Header {
+        Header::RequestCashBoxValue
+    }
+
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+
+    fn parse_response(
+        &self,
+        response_payload: &[u8],
+    ) -> Result<Self::Response, ParseResponseError> {
+        match response_payload.len() {
+            4 => Ok(u32::from_le_bytes([
+                response_payload[0],
+                response_payload[1],
+                response_payload[2],
+                response_payload[3],
+            ])),
+            _ => Err(ParseResponseError::DataLengthMismatch(
+                4,
+                response_payload.len(),
+            )),
         }
     }
 }

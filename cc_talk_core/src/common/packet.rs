@@ -2055,7 +2055,7 @@ pub enum Header {
     /// diagnosed further with header 232, ‘Perform self-check’.
     /// Errors are reported in PRIORITY order. A device with a fault or jam is reported
     /// before a lowest-value empty hopper
-    ReqestErrorStatus = 122,
+    RequestErrorStatus = 122,
     /// Transmitted data : [ hopper no. ] [ count ]
     /// Received data : ACK
     /// [ hopper no. ]
@@ -2752,7 +2752,7 @@ impl TryFrom<u8> for Header {
             125 => Ok(Header::PayMoneyOut),
             124 => Ok(Header::VerifyMoneyOut),
             123 => Ok(Header::RequestActivityRegister),
-            122 => Ok(Header::ReqestErrorStatus),
+            122 => Ok(Header::RequestErrorStatus),
             121 => Ok(Header::PurgeHopper),
             120 => Ok(Header::ModifyHopperBalance),
             119 => Ok(Header::RequestHopperBalance),

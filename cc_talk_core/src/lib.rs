@@ -29,8 +29,13 @@ pub mod cc_talk {
     pub use crate::common::bill_routing::*;
     pub use crate::common::bit_mask::*;
     pub use crate::common::category::*;
+    pub use crate::common::changer_device::*;
+    pub use crate::common::changer_error::*;
+    pub use crate::common::changer_flags::*;
+    pub use crate::common::changer_status::*;
     pub use crate::common::checksum::*;
     pub use crate::common::coin_acceptor_errors::*;
+    pub use crate::common::coin_calibration_codes::*;
     pub use crate::common::coin_event::*;
     pub use crate::common::coin_value_format::*;
     pub use crate::common::currency::*;
