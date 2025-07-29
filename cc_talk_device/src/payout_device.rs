@@ -1,8 +1,5 @@
-use cc_talk_core::{
-    cc_talk::{
-        deserializer::deserialize, serializer::serialize, Packet, PacketError, MAX_BLOCK_LENGTH,
-    },
-    Header,
+use cc_talk_core::cc_talk::{
+    deserializer::deserialize, serializer::serialize, Header, Packet, PacketError, MAX_BLOCK_LENGTH,
 };
 
 use crate::{

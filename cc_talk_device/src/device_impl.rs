@@ -1,8 +1,8 @@
 use core::future::Future;
 
-use cc_talk_core::{
-    cc_talk::{DataStorage, HopperDispenseStatus, HopperStatus, Manufacturer, SerialCode},
-    Category, ChecksumType, Device,
+use cc_talk_core::cc_talk::{
+    Category, ChecksumType, DataStorage, Device, HopperDispenseStatus, HopperStatus, Manufacturer,
+    SerialCode,
 };
 
 pub trait DeviceImpl {
