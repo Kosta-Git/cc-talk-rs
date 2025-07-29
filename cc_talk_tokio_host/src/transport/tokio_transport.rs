@@ -66,7 +66,7 @@ impl TransportMessage {
     {
         TransportMessage {
             address: device.address(),
-            checksum_type: device.checksum_type().clone(),
+            checksum_type: *device.checksum_type(),
             header: command.header(),
             data: command.data().to_vec(),
             respond_to,
@@ -225,7 +225,11 @@ async fn handle_send(
     }
 
     let packet_length = send_packet.get_logical_size();
-    trace!("writing packet of length {}", packet_length);
+    trace!(
+        "writing packet of length {}, {:?}",
+        packet_length,
+        &send_packet.as_slice()[..packet_length]
+    );
     match timeout(
         write_timeout,
         socket.write_all(&send_packet.as_slice()[..packet_length]),
@@ -234,6 +238,10 @@ async fn handle_send(
     {
         Ok(Ok(_)) => {
             trace!("packet sent successfully");
+            let _ = socket.flush().await;
+            let _ = socket
+                .read_exact(&mut send_packet.as_mut_slice()[..packet_length])
+                .await;
             Ok(())
         }
         Ok(Err(_)) => Err((
@@ -251,7 +259,7 @@ async fn read_packet_header(
 ) -> Result<usize, (TransportError, &'static str)> {
     match timeout(read_timeout, socket.read_exact(&mut read_buffer[..5])).await {
         Ok(Ok(read_bytes)) => {
-            trace!("read response header (5 bytes)");
+            trace!("read response header ({} bytes)", read_bytes);
             Ok(read_bytes)
         }
         Ok(Err(_)) => Err((
@@ -268,6 +276,11 @@ async fn read_full_packet(
     socket: &mut UnixStream,
 ) -> Result<usize, (TransportError, &'static str)> {
     let data_length = read_buffer[DATA_LENGTH_OFFSET] as usize;
+    trace!(
+        "data length: {}, buffer {:?}",
+        data_length,
+        &read_buffer[..5]
+    );
     if data_length > 0 {
         return match timeout(
             read_timeout,

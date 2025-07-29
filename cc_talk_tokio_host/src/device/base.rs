@@ -1,8 +1,11 @@
+#![allow(dead_code)]
+
 use cc_talk_core::cc_talk::{Category, Device, Manufacturer, Packet, PacketError, SerialCode};
 use cc_talk_host::{
     command::{Command, ParseResponseError},
     core::core_commands::{
-        RequestEquipementCategoryIdCommand, RequestManufacturerIdCommand, RequestProductCodeCommand,
+        RequestEquipementCategoryIdCommand, RequestManufacturerIdCommand,
+        RequestProductCodeCommand, SimplePollCommand,
     },
     core_plus::core_plus_commands::{
         RequestSerialNumberCommand, RequestSoftwareRevisionCommand, ResetDeviceCommand,
@@ -102,6 +105,14 @@ pub trait DeviceCommon {
 
         let result = rx.await.map_err(|_| CommandError::ReceiveError)??;
         Ok(Packet::new(result))
+    }
+
+    async fn simple_poll(&self) -> Result<(), CommandError> {
+        let response_packet = self.send_command(SimplePollCommand).await?;
+        SimplePollCommand
+            .parse_response(response_packet.get_data()?)
+            .map_err(CommandError::from)
+            .map(|_| ())
     }
 
     async fn get_manufacturer_id(&self) -> Result<Manufacturer, CommandError> {

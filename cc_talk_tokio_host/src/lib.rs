@@ -1,2 +1,2 @@
-mod device;
-mod transport;
+pub mod device;
+pub mod transport;

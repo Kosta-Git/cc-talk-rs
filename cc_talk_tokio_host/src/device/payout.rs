@@ -1,7 +1,11 @@
+#![allow(dead_code)]
+
 use cc_talk_core::cc_talk::Device;
 use tokio::sync::mpsc;
 
 use crate::transport::tokio_transport::TransportMessage;
+
+use super::base::DeviceCommon;
 
 pub struct PayoutDevice {
     pub device: Device,
@@ -12,12 +16,14 @@ impl PayoutDevice {
     pub fn new(device: Device, sender: mpsc::Sender<TransportMessage>) -> Self {
         PayoutDevice { device, sender }
     }
+}
 
-    pub fn get_device(&self) -> &Device {
+impl DeviceCommon for PayoutDevice {
+    fn get_device(&self) -> &Device {
         &self.device
     }
 
-    pub fn get_sender(&self) -> &mpsc::Sender<TransportMessage> {
+    fn get_sender(&self) -> &mpsc::Sender<TransportMessage> {
         &self.sender
     }
 }
