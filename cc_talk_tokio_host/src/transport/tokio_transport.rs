@@ -350,82 +350,80 @@ mod tests {
         }
     }
 
-    async fn mock_device_ack_responder(socket_path: String) {
+    async fn base_mock_device<F>(socket_path: String, replier: F)
+    where
+        F: AsyncFn(UnixStream) -> (),
+    {
         if Path::new(&socket_path).exists() {
             std::fs::remove_file(&socket_path).ok();
         }
 
         let listener = UnixListener::bind(&socket_path).unwrap();
 
-        while let Ok((mut stream, _)) = listener.accept().await {
-            tokio::spawn(async move {
-                let mut buffer = [0u8; 256];
-
-                while let Ok(n) = stream.read(&mut buffer).await {
-                    if n == 0 {
-                        break;
-                    }
-
-                    let request = &buffer[..n];
-                    if n >= 5 {
-                        let dest = request[0];
-                        let src = request[2];
-
-                        let mut response = vec![src, 0x00, dest, 0x00]; // dest, len=0, src, header=Reply
-
-                        let checksum: u16 = response.iter().map(|&b| b as u16).sum();
-                        response.push((256 - (checksum % 256)) as u8);
-
-                        let _ = stream.write_all(&response).await;
-                    }
-                }
-            });
+        while let Ok((stream, _)) = listener.accept().await {
+            let _ = replier(stream).await;
         }
+    }
+
+    async fn mock_device_ack_responder(socket_path: String) {
+        base_mock_device(socket_path, |mut stream: UnixStream| async move {
+            let mut buffer = [0u8; 256];
+
+            while let Ok(n) = stream.read(&mut buffer).await {
+                if n == 0 {
+                    break;
+                }
+
+                let request = &buffer[..n];
+                if n >= 5 {
+                    let dest = request[0];
+                    let src = request[2];
+
+                    let mut response = vec![src, 0x00, dest, 0x00]; // dest, len=0, src, header=Reply
+
+                    let checksum: u16 = response.iter().map(|&b| b as u16).sum();
+                    response.push((256 - (checksum % 256)) as u8);
+
+                    let _ = stream.write_all(&response).await;
+                }
+            }
+        })
+        .await;
     }
 
     async fn mock_device_no_response(socket_path: String) {
-        if Path::new(&socket_path).exists() {
-            std::fs::remove_file(&socket_path).ok();
-        }
-
-        let listener = UnixListener::bind(&socket_path).unwrap();
-
-        while let Ok((_stream, _)) = listener.accept().await {
+        base_mock_device(socket_path, |mut stream: UnixStream| async move {
+            let mut buffer = [0u8; 256];
+            let _ = stream.read(&mut buffer).await.unwrap();
             tokio::time::sleep(Duration::from_secs(10)).await;
-        }
+        })
+        .await;
     }
 
     async fn mock_device_nack_responder(socket_path: String) {
-        if Path::new(&socket_path).exists() {
-            std::fs::remove_file(&socket_path).ok();
-        }
+        base_mock_device(socket_path, |mut stream: UnixStream| async move {
+            let mut buffer = [0u8; 256];
 
-        let listener = UnixListener::bind(&socket_path).unwrap();
-
-        while let Ok((mut stream, _)) = listener.accept().await {
-            tokio::spawn(async move {
-                let mut buffer = [0u8; 256];
-
-                while let Ok(n) = stream.read(&mut buffer).await {
-                    if n == 0 {
-                        break;
-                    }
-
-                    let request = &buffer[..n];
-                    if n >= 5 {
-                        let dest = request[0];
-                        let src = request[2];
-
-                        let mut response = vec![src, 0x00, dest, Header::NACK as u8];
-
-                        let checksum: u16 = response.iter().map(|&b| b as u16).sum();
-                        response.push((256 - (checksum % 256)) as u8);
-
-                        let _ = stream.write_all(&response).await;
-                    }
+            while let Ok(n) = stream.read(&mut buffer).await {
+                if n == 0 {
+                    break;
                 }
-            });
-        }
+
+                let request = &buffer[..n];
+                if n >= 5 {
+                    let dest = request[0];
+                    let src = request[2];
+
+                    let mut response = vec![src, 0x00, dest, Header::NACK as u8];
+
+                    let checksum: u16 = response.iter().map(|&b| b as u16).sum();
+                    response.push((256 - (checksum % 256)) as u8);
+
+                    let _ = stream.write_all(&response).await;
+                }
+            }
+        })
+        .await;
     }
 
     #[tokio::test]
@@ -590,7 +588,7 @@ mod tests {
             .expect("Response timeout")
             .expect("Response channel error");
 
-        assert!(matches!(result, Err(TransportError::Timeout)));
+        assert_eq!(result, Err(TransportError::Timeout));
 
         transport_handle.abort();
     }

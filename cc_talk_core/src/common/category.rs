@@ -202,7 +202,7 @@ impl Address {
     /// # Example
     ///
     /// ```
-    /// use cc_talk_core::Address;
+    /// use cc_talk_core::cc_talk::Address;
     ///
     /// let hopperAddresses = Address::SingleAndRange(3, 4..=10);
     ///
@@ -226,7 +226,7 @@ impl Address {
     /// # Example
     ///
     /// ```
-    /// use cc_talk_core::Address;
+    /// use cc_talk_core::cc_talk::Address;
     ///
     /// let hopper_addresses = Address::SingleAndRange(3, 4..=10);
     /// let hopper_iter = hopper_addresses.iter();
