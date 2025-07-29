@@ -3,10 +3,10 @@ use std::time::Duration;
 use cc_talk_core::cc_talk::{Category, ChecksumType, Device, Manufacturer};
 use cc_talk_tokio_host::{
     device::{base::DeviceCommon, payout::PayoutDevice},
-    transport::{retry::RetryConfig, tokio_transport::CcTalkTokioTransport, *},
+    transport::{retry::RetryConfig, tokio_transport::CcTalkTokioTransport},
 };
 use tokio::sync::mpsc;
-use tracing::{Level, error, info};
+use tracing::{error, info};
 
 #[tokio::main]
 async fn main() {
@@ -38,7 +38,6 @@ async fn main() {
             tracing::error!("☠️ Error running transport: {}", e);
         }
     });
-    // TODO: find a way to signal the transport is ready
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     let hopper = PayoutDevice::new(Device::new(3, Category::Payout, ChecksumType::Crc8), tx);
@@ -52,10 +51,7 @@ async fn main() {
         }
     }
 
-    let manufacturer = hopper
-        .get_manufacturer_id()
-        .await
-        .unwrap_or(Manufacturer::INOTEK);
+    let manufacturer = hopper.get_manufacturer_id().await.unwrap();
     let serial_number = hopper.get_serial_number().await.unwrap();
     let category = hopper.get_category().await.unwrap();
     let product_code = hopper.get_product_code().await.unwrap();
@@ -66,7 +62,6 @@ async fn main() {
     info!("Category: {:?}", category);
     info!("Product Code: {}", product_code);
     info!("Software Revision: {}", software_revision);
-    loop {
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
+
+    tokio::time::sleep(Duration::from_secs(5)).await;
 }

@@ -217,12 +217,8 @@ async fn handle_send(
     }
 
     trace!("serializing packet");
-    if serialize(
-        &Device::new(message.address, Category::Unknown, message.checksum_type),
-        send_packet,
-    )
-    .is_err()
-    {
+    let device = Device::new(message.address, Category::Unknown, message.checksum_type);
+    if serialize(&device, send_packet).is_err() {
         return Err((
             TransportError::PacketCreationError,
             "failed to serialize packet",
