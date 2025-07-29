@@ -4,6 +4,7 @@ use cc_talk_core::cc_talk::{
     Category, ChecksumType, DATA_LENGTH_OFFSET, Device, Header, MAX_BLOCK_LENGTH, Packet,
     deserializer::deserialize, serializer::serialize,
 };
+use cc_talk_host::command::Command;
 use std::time::Duration;
 use thiserror::Error;
 use tokio::{
@@ -52,6 +53,25 @@ pub struct TransportMessage {
     pub header: Header,
     pub data: Vec<u8>,
     pub respond_to: oneshot::Sender<Result<Vec<u8>, TransportError>>,
+}
+
+impl TransportMessage {
+    pub fn new<T>(
+        device: &Device,
+        command: T,
+        respond_to: oneshot::Sender<Result<Vec<u8>, TransportError>>,
+    ) -> Self
+    where
+        T: Command,
+    {
+        TransportMessage {
+            address: device.address(),
+            checksum_type: device.checksum_type().clone(),
+            header: command.header(),
+            data: command.data().to_vec(),
+            respond_to,
+        }
+    }
 }
 
 #[derive(Debug)]

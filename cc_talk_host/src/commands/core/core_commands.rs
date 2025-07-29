@@ -5,6 +5,7 @@ use super::{
     CoreCommandSet,
 };
 
+#[derive(Debug)]
 pub struct SimplePollCommand;
 impl Command for SimplePollCommand {
     type Response = ();
@@ -32,6 +33,7 @@ impl Command for SimplePollCommand {
 }
 impl BelongsTo<CoreCommandSet> for SimplePollCommand {}
 
+#[derive(Debug)]
 pub struct RequestManufacturerIdCommand;
 impl Command for RequestManufacturerIdCommand {
     type Response = Manufacturer;
@@ -58,6 +60,7 @@ impl Command for RequestManufacturerIdCommand {
 }
 impl BelongsTo<CoreCommandSet> for RequestManufacturerIdCommand {}
 
+#[derive(Debug)]
 pub struct RequestEquipementCategoryIdCommand;
 impl Command for RequestEquipementCategoryIdCommand {
     type Response = Category;
@@ -84,9 +87,10 @@ impl Command for RequestEquipementCategoryIdCommand {
 }
 impl BelongsTo<CoreCommandSet> for RequestEquipementCategoryIdCommand {}
 
+#[derive(Debug)]
 pub struct RequestProductCodeCommand;
 impl Command for RequestProductCodeCommand {
-    type Response = ();
+    type Response = heapless::String<64>;
 
     fn header(&self) -> Header {
         Header::RequestProductCode
@@ -108,11 +112,14 @@ impl Command for RequestProductCodeCommand {
         if !response_payload.iter().all(|&b| b.is_ascii()) {
             return Err(ParseResponseError::ParseError("Invalid ASCII response"));
         }
-        Ok(())
+        Ok(heapless::String::from_iter(
+            response_payload.iter().map(|b| *b as char),
+        ))
     }
 }
 impl BelongsTo<CoreCommandSet> for RequestProductCodeCommand {}
 
+#[derive(Debug)]
 pub struct RequestBuildCodeCommand;
 impl Command for RequestBuildCodeCommand {
     type Response = ();
@@ -143,6 +150,7 @@ impl Command for RequestBuildCodeCommand {
 impl BelongsTo<CoreCommandSet> for RequestBuildCodeCommand {}
 
 #[deprecated(note = "This command is not implemented yet.")]
+#[derive(Debug)]
 pub struct RequestEncryptionSupportCommand;
 impl Command for RequestEncryptionSupportCommand {
     type Response = bool;

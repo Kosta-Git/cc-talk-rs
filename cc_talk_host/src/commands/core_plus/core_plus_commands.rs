@@ -5,6 +5,7 @@ use super::{
     CorePlusCommandSet,
 };
 
+#[derive(Debug)]
 pub struct RequestSerialNumberCommand;
 impl Command for RequestSerialNumberCommand {
     type Response = SerialCode;
@@ -37,9 +38,10 @@ impl Command for RequestSerialNumberCommand {
 }
 impl BelongsTo<CorePlusCommandSet> for RequestSerialNumberCommand {}
 
+#[derive(Debug)]
 pub struct RequestSoftwareRevisionCommand;
 impl Command for RequestSoftwareRevisionCommand {
-    type Response = ();
+    type Response = heapless::String<64>;
 
     fn header(&self) -> Header {
         Header::RequestSoftwareRevision
@@ -61,7 +63,9 @@ impl Command for RequestSoftwareRevisionCommand {
         if !response_payload.iter().all(|&b| b.is_ascii()) {
             return Err(ParseResponseError::ParseError("Invalid ASCII response"));
         }
-        Ok(())
+        Ok(heapless::String::from_iter(
+            response_payload.iter().map(|b| *b as char),
+        ))
     }
 }
 impl BelongsTo<CorePlusCommandSet> for RequestSoftwareRevisionCommand {}
@@ -104,6 +108,7 @@ impl Command for ReadDHPublicKeyCommand {
 }
 impl BelongsTo<CorePlusCommandSet> for ReadDHPublicKeyCommand {}
 
+#[derive(Debug)]
 pub struct SendDHPublicKeyCommand<'a> {
     key: &'a [u8],
 }
@@ -143,13 +148,16 @@ impl Command for SendDHPublicKeyCommand<'_> {
 impl BelongsTo<CorePlusCommandSet> for SendDHPublicKeyCommand<'_> {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+#[derive(Debug)]
 pub struct RequestEncryptedProductIdCommand;
 impl BelongsTo<CorePlusCommandSet> for RequestEncryptedProductIdCommand {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+#[derive(Debug)]
 pub struct RequestACMIEncryptedDataCommand;
 impl BelongsTo<CorePlusCommandSet> for RequestACMIEncryptedDataCommand {}
 
+#[derive(Debug)]
 pub struct RequestDataStorageAvailabilityCommand;
 impl Command for RequestDataStorageAvailabilityCommand {
     type Response = DataStorage;
@@ -188,9 +196,11 @@ impl Command for RequestDataStorageAvailabilityCommand {
 impl BelongsTo<CorePlusCommandSet> for RequestDataStorageAvailabilityCommand {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+#[derive(Debug)]
 pub struct ACMIUnencryptedProductIdCommand;
 impl BelongsTo<CorePlusCommandSet> for ACMIUnencryptedProductIdCommand {}
 
+#[derive(Debug)]
 pub struct CalculateRomChecksumCommand;
 impl Command for CalculateRomChecksumCommand {
     type Response = u32;
@@ -224,6 +234,7 @@ impl Command for CalculateRomChecksumCommand {
 }
 impl BelongsTo<CorePlusCommandSet> for CalculateRomChecksumCommand {}
 
+#[derive(Debug)]
 pub struct RequestCreationDateCommand;
 impl Command for RequestCreationDateCommand {
     type Response = RTBYDate;
@@ -246,6 +257,7 @@ impl Command for RequestCreationDateCommand {
 }
 impl BelongsTo<CorePlusCommandSet> for RequestCreationDateCommand {}
 
+#[derive(Debug)]
 pub struct RequestLastModificationDateCommand;
 impl Command for RequestLastModificationDateCommand {
     type Response = RTBYDate;
@@ -279,6 +291,7 @@ fn parse_rtby_from_payload(response_payload: &[u8]) -> Result<RTBYDate, ParseRes
     Ok(RTBYDate::new(date_code))
 }
 
+#[derive(Debug)]
 pub struct RequestBaseYearCommand;
 impl Command for RequestBaseYearCommand {
     type Response = u16;
@@ -320,6 +333,7 @@ impl Command for RequestBaseYearCommand {
 }
 impl BelongsTo<CorePlusCommandSet> for RequestBaseYearCommand {}
 
+#[derive(Debug)]
 pub struct RequestAddressModeCommand;
 impl Command for RequestAddressModeCommand {
     type Response = u8;
@@ -350,10 +364,12 @@ impl Command for RequestAddressModeCommand {
 impl BelongsTo<CorePlusCommandSet> for RequestAddressModeCommand {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+#[derive(Debug)]
 pub struct SwitchEncryptionCodeCommand;
 impl BelongsTo<CorePlusCommandSet> for SwitchEncryptionCodeCommand {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+#[derive(Debug)]
 pub struct StoreEncryptionCodeCommand;
 impl BelongsTo<CorePlusCommandSet> for StoreEncryptionCodeCommand {}
 
@@ -362,6 +378,7 @@ pub struct UsbInfo {
     pub vendor_id: u16,
     pub product_id: u16,
 }
+#[derive(Debug)]
 pub struct RequestUsbIdCommand;
 impl Command for RequestUsbIdCommand {
     type Response = UsbInfo;
@@ -428,6 +445,7 @@ pub enum BaudRateCode {
 /// This command returns different status depending on the flow
 /// Please read the documentation of the command for more details.
 /// As switching baud rate is a quite involved process with pitfalls.
+#[derive(Debug)]
 pub struct SwitchBaudRateCommand {
     buffer: [u8; 2],
 }
@@ -475,6 +493,7 @@ impl Command for SwitchBaudRateCommand {
 impl BelongsTo<CorePlusCommandSet> for SwitchBaudRateCommand {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
+#[derive(Debug)]
 pub struct SwitchEncryptionKeyCommand;
 impl BelongsTo<CorePlusCommandSet> for SwitchEncryptionKeyCommand {}
 
@@ -506,6 +525,7 @@ impl Command for DataStreamCommand<'_> {
 }
 impl BelongsTo<CorePlusCommandSet> for DataStreamCommand<'_> {}
 
+#[derive(Debug)]
 pub struct BusyCommand;
 impl Command for BusyCommand {
     type Response = ();
@@ -525,6 +545,7 @@ impl Command for BusyCommand {
 }
 impl BelongsTo<CorePlusCommandSet> for BusyCommand {}
 
+#[derive(Debug)]
 pub struct NackCommand;
 impl Command for NackCommand {
     type Response = ();
@@ -544,6 +565,7 @@ impl Command for NackCommand {
 }
 impl BelongsTo<CorePlusCommandSet> for NackCommand {}
 
+#[derive(Debug)]
 pub struct RequestCommsRevisionCommand;
 impl Command for RequestCommsRevisionCommand {
     type Response = (u8, u8, u8);
@@ -579,6 +601,7 @@ impl Command for RequestCommsRevisionCommand {
 }
 impl BelongsTo<CorePlusCommandSet> for RequestCommsRevisionCommand {}
 
+#[derive(Debug)]
 pub struct ResetDeviceCommand;
 impl Command for ResetDeviceCommand {
     type Response = ();

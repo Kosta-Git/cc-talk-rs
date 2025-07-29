@@ -80,10 +80,7 @@ impl RetryInstance {
             TransportError::SocketWriteError | TransportError::SocketReadError => {
                 self.retry_on_socket_error
             }
-            // Never retry these
-            TransportError::BufferOverflow
-            | TransportError::PacketCreationError
-            | TransportError::MaxRetriesExceeded => false,
+            _ => false,
         }
     }
 
