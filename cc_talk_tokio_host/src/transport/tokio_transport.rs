@@ -43,6 +43,7 @@ pub struct CcTalkTokioTransport {
     timeout: Duration,
     retry_config: RetryConfig,
     minimum_delay: Duration,
+    echo: bool,
     send_buffer: Vec<u8>,
     receive_buffer: Vec<u8>,
 }
@@ -100,6 +101,7 @@ impl CcTalkTokioTransport {
         timeout: Duration,
         minimum_delay: Duration,
         retry_config: RetryConfig,
+        echo: bool,
     ) -> Self {
         CcTalkTokioTransport {
             receiver,
@@ -107,6 +109,7 @@ impl CcTalkTokioTransport {
             timeout,
             minimum_delay,
             retry_config,
+            echo,
             send_buffer: vec![0; MAX_BLOCK_LENGTH],
             receive_buffer: vec![0; MAX_BLOCK_LENGTH],
         }
@@ -141,6 +144,7 @@ impl CcTalkTokioTransport {
                         &mut self.receive_buffer,
                         self.timeout,
                         &mut socket,
+                        self.echo,
                     )
                     .await
                     {
@@ -205,6 +209,7 @@ async fn handle_send(
     send_packet: &mut Packet<&mut [u8]>,
     socket: &mut UnixStream,
     write_timeout: Duration,
+    echo: bool,
 ) -> Result<(), (TransportError, &'static str)> {
     trace!("building packet for message");
     if let Err(error) = build_packet(message, send_packet) {
@@ -239,9 +244,11 @@ async fn handle_send(
         Ok(Ok(_)) => {
             trace!("packet sent successfully");
             let _ = socket.flush().await;
-            let _ = socket
-                .read_exact(&mut send_packet.as_mut_slice()[..packet_length])
-                .await;
+            if echo {
+                let _ = socket
+                    .read_exact(&mut send_packet.as_mut_slice()[..packet_length])
+                    .await;
+            }
             Ok(())
         }
         Ok(Err(_)) => Err((
@@ -308,11 +315,12 @@ async fn handle_message(
     read_buffer: &mut [u8],
     rw_timeout: Duration,
     socket: &mut UnixStream,
+    echo: bool,
 ) -> Result<Vec<u8>, (TransportError, &'static str)> {
     let mut send_packet = Packet::new(send_buffer);
 
     if let Err((error_code, error_message)) =
-        handle_send(message, &mut send_packet, socket, rw_timeout).await
+        handle_send(message, &mut send_packet, socket, rw_timeout, echo).await
     {
         return Err((error_code, error_message));
     }
@@ -368,6 +376,7 @@ mod tests {
         CcTalkTokioTransport {
             receiver,
             socket_path,
+            echo: false,
             retry_config: RetryConfig {
                 max_retries: 0,
                 retry_delay: Duration::from_millis(100),
@@ -508,7 +517,6 @@ mod tests {
         let (_temp_dir, socket_path) = create_test_socket_path();
         let (tx, rx) = mpsc::channel(10);
 
-        // Mock device that echoes data back
         let device_socket_path = socket_path.clone();
         tokio::spawn(async move {
             if Path::new(&device_socket_path).exists() {
@@ -700,8 +708,6 @@ mod tests {
             let transport = create_test_transport(rx, transport_socket_path);
             transport.run().await
         });
-
-        tokio::time::sleep(Duration::from_millis(10)).await;
 
         let mut response_receivers = vec![];
 

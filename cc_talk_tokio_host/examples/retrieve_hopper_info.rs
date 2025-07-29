@@ -31,6 +31,7 @@ async fn main() {
         Duration::from_millis(100),
         Duration::from_millis(100),
         RetryConfig::default(),
+        true,
     );
     tokio::spawn(async move {
         if let Err(e) = transport.run().await {
