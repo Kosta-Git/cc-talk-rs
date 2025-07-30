@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
-use cc_talk_core::cc_talk::{Device, HopperDispenseStatus, HopperFlag, HopperStatus};
+use cc_talk_core::cc_talk::{
+    CurrencyToken, Device, HopperDispenseStatus, HopperFlag, HopperStatus,
+};
 use cc_talk_host::{command::Command, device::device_commands::*};
 use tokio::sync::mpsc;
 
@@ -104,6 +106,29 @@ impl PayoutDevice {
     pub async fn get_dispense_count(&self) -> DeviceResult<u32> {
         let response_packet = self.send_command(RequestHopperDispenseCountCommand).await?;
         RequestHopperDispenseCountCommand
+            .parse_response(response_packet.get_data()?)
+            .map_err(CommandError::from)
+    }
+
+    pub async fn emergency_stop(&self) -> DeviceResult<u8> {
+        let response_packet = self.send_command(EmergencyStopCommand).await?;
+        EmergencyStopCommand
+            .parse_response(response_packet.get_data()?)
+            .map_err(CommandError::from)
+    }
+
+    pub async fn get_hopper_coin(&self) -> DeviceResult<CurrencyToken> {
+        let response_packet = self.send_command(RequestHopperCoinCommand).await?;
+        RequestHopperCoinCommand
+            .parse_response(response_packet.get_data()?)
+            .map_err(CommandError::from)
+    }
+
+    pub async fn get_hopper_coin_value(&self, coin_type: u8) -> DeviceResult<(CurrencyToken, u16)> {
+        let response_packet = self
+            .send_command(RequestHopperCoinValueCommand::new(coin_type))
+            .await?;
+        RequestHopperCoinValueCommand::new(coin_type)
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)
     }

@@ -6,6 +6,9 @@ edition = "2024"
 [[example]]
 name = "retrieve_hopper_info"
 
+[[example]]
+name = "hopper_dispense"
+
 [dependencies]
 cc_talk_core = { path = "../cc_talk_core", features = ["std"] }
 cc_talk_host = { path = "../cc_talk_host", features = ["tracing", "std"] }

@@ -20,7 +20,7 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
-    info!("💰 ccTalk device info example.");
+    info!("💰 ccTalk payout example.");
 
     let (tx, rx) = mpsc::channel(32);
 
@@ -51,15 +51,34 @@ async fn main() {
         }
     }
 
-    let manufacturer = hopper.get_manufacturer_id().await.unwrap();
-    let serial_number = hopper.get_serial_number().await.unwrap();
-    let category = hopper.get_category().await.unwrap();
     let product_code = hopper.get_product_code().await.unwrap();
-    let software_revision = hopper.get_software_revision().await.unwrap();
 
-    info!("Manufacturer: {}", manufacturer);
-    info!("Serial Number: {}", serial_number);
-    info!("Category: {:?}", category);
     info!("Product Code: {}", product_code);
-    info!("Software Revision: {}", software_revision);
+
+    if product_code == "WHM 100.C" {
+        // At 100% speed the WHM 100.C is like a gun shot :)
+        let _ = hopper.whm_100_speed_adjust(true, 0).await; // 0 is 30%, 7 is 100%
+    }
+
+    let _ = hopper.enable_hopper().await;
+    let _ = hopper.payout_serial_number(1).await;
+
+    let _ = tokio::spawn(async move {
+        let mut remaining = u8::MAX;
+
+        while remaining > 0 {
+            let status = hopper.get_payout_status().await.unwrap();
+            let sensor = hopper.get_sensor_status().await.unwrap();
+            let self_test = hopper.self_test().await.unwrap();
+
+            info!("Hopper Status: {}", status);
+            info!("Sensor Status: {}", sensor.1);
+            info!("Self Test Result: {:?}", self_test);
+
+            remaining = status.coins_remaining;
+        }
+    })
+    .await;
+
+    tokio::time::sleep(Duration::from_secs(2)).await;
 }
