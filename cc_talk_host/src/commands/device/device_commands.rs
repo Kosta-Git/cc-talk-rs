@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use std::time::Duration;
+
 use cc_talk_core::cc_talk::{
     BillRouteCode, BillRoutingError, BillValidatorPollResult, BillValidatorPollResultError,
     BitMask, BitMaskError, ChangerDevice, ChangerError, ChangerFlags, ChangerPollResult,
@@ -28,6 +30,30 @@ pub enum PollingUnit {
 pub struct PollingPriority {
     pub unit: PollingUnit,
     pub value: u8,
+}
+#[cfg(feature = "std")]
+impl PollingPriority {
+    pub fn as_duration(&self) -> Option<std::time::Duration> {
+        use std::time::Duration;
+
+        let value = self.value as u64;
+
+        let duration = match self.unit {
+            PollingUnit::Special => {
+                return None;
+            }
+            PollingUnit::Ms => Duration::from_millis(value),
+            PollingUnit::X10Ms => Duration::from_millis(value * 10),
+            PollingUnit::Seconds => Duration::from_secs(value),
+            PollingUnit::Minutes => Duration::from_secs(value * 60),
+            PollingUnit::Hours => Duration::from_secs(value * 3600),
+            PollingUnit::Days => Duration::from_secs(value * 86400),
+            PollingUnit::Weeks => Duration::from_secs(value * 604800),
+            PollingUnit::Months => Duration::from_secs(value * 2629746), // ~30.44 days
+            PollingUnit::Years => Duration::from_secs(value * 31556952), // ~365.25 days
+        };
+        Some(duration)
+    }
 }
 #[derive(Debug)]
 pub struct RequestPollingPriorityCommand;

@@ -93,7 +93,7 @@ impl TryFrom<&[u8]> for CoinAcceptorPollResult {
         }
 
         let expected_len = (announced_events as usize * 2) + 1;
-        if value.len() != expected_len {
+        if value.len() < expected_len {
             return Err(CoinAcceptorPollResultError::NotEnoughEvents);
         }
 
