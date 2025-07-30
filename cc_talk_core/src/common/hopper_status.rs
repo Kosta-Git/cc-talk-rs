@@ -11,6 +11,39 @@ pub struct HopperStatus {
     pub higher_than_high_level: bool,
 }
 
+#[cfg(feature = "std")]
+impl core::fmt::Display for HopperStatus {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let low_status = if self.low_level_supported {
+            if self.higher_than_low_level {
+                "🟢 Above low level"
+            } else {
+                "🔴 Below low level"
+            }
+        } else {
+            "➖ Low level not supported"
+        };
+
+        let high_status = if self.high_level_supported {
+            if self.higher_than_high_level {
+                "🟢 Above high level"
+            } else {
+                "🟡 Below high level"
+            }
+        } else {
+            "➖ High level not supported"
+        };
+
+        write!(
+            f,
+            "📊 Hopper Level Status\n\
+            ┌─ 🔻 Low Level: {}\n\
+            └─ 🔺 High Level: {}",
+            low_status, high_status
+        )
+    }
+}
+
 impl HopperStatus {
     pub fn new(
         low_level_supported: bool,
@@ -64,6 +97,21 @@ pub struct HopperDispenseStatus {
     pub coins_remaining: u8,
     pub paid: u8,
     pub unpaid: u8,
+}
+
+#[cfg(feature = "std")]
+impl core::fmt::Display for HopperDispenseStatus {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "🪙 Coin Hopper Status\n\
+             ┌─ 🎫 Event ID: {}\n\
+             ├─ 💰 Dispensed: {} coins\n\
+             ├─ ⏳ Not dispensed: {} coins\n\
+             └─ 📦 Remaining in hopper: {} coins",
+            self.event_counter, self.paid, self.unpaid, self.coins_remaining
+        )
+    }
 }
 
 impl HopperDispenseStatus {

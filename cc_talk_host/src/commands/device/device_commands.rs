@@ -24,10 +24,12 @@ pub enum PollingUnit {
     Months = 8,
     Years = 9,
 }
+#[derive(Debug)]
 pub struct PollingPriority {
     pub unit: PollingUnit,
     pub value: u8,
 }
+#[derive(Debug)]
 pub struct RequestPollingPriorityCommand;
 impl Command for RequestPollingPriorityCommand {
     type Response = PollingPriority;
@@ -78,6 +80,7 @@ pub enum CoinAcceptorStatus {
     CoinReturnMechanismActivated = 1,
     CoinOnString = 2,
 }
+#[derive(Debug)]
 pub struct RequestStatusCommand;
 impl Command for RequestStatusCommand {
     type Response = CoinAcceptorStatus;
@@ -109,6 +112,7 @@ impl Command for RequestStatusCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestVariableSetCommand;
 impl Command for RequestVariableSetCommand {
     type Response = ();
@@ -127,6 +131,7 @@ impl Command for RequestVariableSetCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestDatabaseVersionCommand;
 impl Command for RequestDatabaseVersionCommand {
     type Response = u8;
@@ -302,6 +307,7 @@ impl Command for LatchOutputLinesCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct PerformSelfCheckCommand;
 impl Command for PerformSelfCheckCommand {
     type Response = Fault;
@@ -368,6 +374,7 @@ impl<const N: usize> Command for ModifyInhibitStatusCommand<N> {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestInhibitStatusCommand<const N: usize>;
 impl<const N: usize> Command for RequestInhibitStatusCommand<N> {
     type Response = [u8; N];
@@ -398,6 +405,7 @@ impl<const N: usize> Command for RequestInhibitStatusCommand<N> {
     }
 }
 
+#[derive(Debug)]
 pub struct ReadBufferedCreditOrErrorCodeCommand;
 impl Command for ReadBufferedCreditOrErrorCodeCommand {
     type Response = CoinAcceptorPollResult;
@@ -452,6 +460,7 @@ impl<const N: usize> Command for ModifyMasterInhibitStatusCommand<N> {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestMasterInhibitStatusCommand<const N: usize>;
 impl<const N: usize> Command for RequestMasterInhibitStatusCommand<N> {
     type Response = [u8; N];
@@ -486,6 +495,7 @@ impl<const N: usize> Command for RequestMasterInhibitStatusCommand<N> {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestInsertionCounterCommand;
 impl Command for RequestInsertionCounterCommand {
     type Response = u32;
@@ -517,6 +527,7 @@ impl Command for RequestInsertionCounterCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestCreditCounterCommand;
 impl Command for RequestCreditCounterCommand {
     type Response = u32;
@@ -549,8 +560,10 @@ impl Command for RequestCreditCounterCommand {
 }
 
 // TODO: Implement this once encryption is supported
+#[derive(Debug)]
 pub struct ModifyEncryptedInhibitAndOverrideRegistersCommand;
 
+#[derive(Debug)]
 pub struct ModifySorterOverrideStatusCommand {
     buffer: u8,
 }
@@ -581,6 +594,7 @@ impl Command for ModifySorterOverrideStatusCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestSorterOverrideStatusCommand;
 impl Command for RequestSorterOverrideStatusCommand {
     type Response = BitMask<1>;
@@ -609,6 +623,7 @@ impl Command for RequestSorterOverrideStatusCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct EnterNewPinNumberCommand {
     pub pin: [u8; 4],
 }
@@ -637,6 +652,7 @@ impl Command for EnterNewPinNumberCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct EnterPinNumberCommand {
     pub pin: [u8; 4],
 }
@@ -665,6 +681,7 @@ impl Command for EnterPinNumberCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestpayoutHighLowStatusCommand;
 impl Command for RequestpayoutHighLowStatusCommand {
     type Response = (u8, HopperStatus);
@@ -687,6 +704,7 @@ impl Command for RequestpayoutHighLowStatusCommand {
 }
 
 /// The size `N` should be retrieved from [Header::DataStorageAvailability]
+#[derive(Debug)]
 pub struct ReadDataBlockCommand<const N: usize> {
     pub block_number: u8,
 }
@@ -720,6 +738,7 @@ impl<const N: usize> Command for ReadDataBlockCommand<N> {
 }
 
 /// The size `N` should be retrieved from [Header::DataStorageAvailability]
+#[derive(Debug)]
 pub struct WriteDataBlockCommand<const N: usize> {
     data: heapless::Vec<u8, 256>,
 }
@@ -762,6 +781,7 @@ impl<const N: usize> Command for WriteDataBlockCommand<N> {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestOptionFlagsCommand;
 impl Command for RequestOptionFlagsCommand {
     type Response = RequestOptionFlags;
@@ -789,6 +809,7 @@ impl Command for RequestOptionFlagsCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestCoinPositionCommand {
     buffer: [u8; 1],
 }
@@ -824,6 +845,7 @@ impl Command for RequestCoinPositionCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct PowerManagementControlCommand {
     buffer: [u8; 1],
 }
@@ -860,6 +882,7 @@ impl Command for PowerManagementControlCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifySorterPathCommand {
     buffer: [u8; 2],
 }
@@ -896,6 +919,7 @@ impl Command for ModifySorterPathCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestSorterPathCommand {
     buffer: [u8; 1],
 }
@@ -938,6 +962,7 @@ impl Command for RequestSorterPathCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyPayoutAbsoluteCountCommand {
     buffer: [u8; 3],
     has_hopper_number: bool,
@@ -991,6 +1016,7 @@ impl Command for ModifyPayoutAbsoluteCountCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestPayoutAbsoluteCountCommand {
     buffer: [u8; 1],
     has_hopper_number: bool,
@@ -1043,11 +1069,14 @@ impl Command for RequestPayoutAbsoluteCountCommand {
 }
 
 // TODO: Implement this
+#[derive(Debug)]
 pub struct MeterControlCommand;
 
 // TODO: Implement this
+#[derive(Debug)]
 pub struct DisplayControlCommand;
 
+#[derive(Debug)]
 pub struct TeachModeControlCommand {
     buffer: [u8; 2],
     has_orientation: bool,
@@ -1097,6 +1126,7 @@ impl Command for TeachModeControlCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestTeachModeStatusCommand {
     buffer: [u8; 1],
 }
@@ -1136,6 +1166,7 @@ impl Command for RequestTeachModeStatusCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ConfigurationToEepromCommand;
 impl Command for ConfigurationToEepromCommand {
     type Response = ();
@@ -1157,6 +1188,7 @@ impl Command for ConfigurationToEepromCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct CountersToEepromCommand;
 impl Command for CountersToEepromCommand {
     type Response = ();
@@ -1177,6 +1209,7 @@ impl Command for CountersToEepromCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestRejectCounterCommand;
 impl Command for RequestRejectCounterCommand {
     type Response = u32;
@@ -1208,6 +1241,7 @@ impl Command for RequestRejectCounterCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestFraudCounterCommand;
 impl Command for RequestFraudCounterCommand {
     type Response = u32;
@@ -1240,8 +1274,10 @@ impl Command for RequestFraudCounterCommand {
 }
 
 // TODO: Implement this
+#[derive(Debug)]
 pub struct KeypadControlCommand;
 
+#[derive(Debug)]
 pub struct ModifyDefaultSorterPathCommand {
     buffer: [u8; 1],
 }
@@ -1276,6 +1312,7 @@ impl Command for ModifyDefaultSorterPathCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestDefaultSorterPathCommand;
 impl Command for RequestDefaultSorterPathCommand {
     type Response = SorterPath;
@@ -1302,6 +1339,7 @@ impl Command for RequestDefaultSorterPathCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyPayoutCapacityCommand {
     buffer: [u8; 3],
     has_hopper_number: bool,
@@ -1355,6 +1393,7 @@ impl Command for ModifyPayoutCapacityCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestPayoutCapacityCommand {
     buffer: [u8; 1],
     has_hopper_number: bool,
@@ -1406,6 +1445,7 @@ impl Command for RequestPayoutCapacityCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyCoinIdCommand {
     buffer: [u8; 7],
 }
@@ -1450,6 +1490,7 @@ impl Command for ModifyCoinIdCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestCoinIdCommand {
     buffer: [u8; 1],
 }
@@ -1491,6 +1532,7 @@ impl Command for RequestCoinIdCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct UploadWindowDataCommand {
     buffer: [u8; 3],
     size: u8,
@@ -1558,6 +1600,7 @@ impl Command for UploadWindowDataCommand {
 }
 
 /// This command is device specific, no validation/parsing is provided.
+#[derive(Debug)]
 pub struct DownloadCalibrationDataCommand;
 impl Command for DownloadCalibrationDataCommand {
     type Response = ();
@@ -1575,6 +1618,7 @@ impl Command for DownloadCalibrationDataCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifySecuritySettingCommand {
     buffer: [u8; 2],
 }
@@ -1611,6 +1655,7 @@ impl Command for ModifySecuritySettingCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestSecuritySettingCommand {
     buffer: [u8; 1],
 }
@@ -1644,6 +1689,7 @@ impl Command for RequestSecuritySettingCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyBankSelectCommand {
     buffer: [u8; 1],
 }
@@ -1677,6 +1723,7 @@ impl Command for ModifyBankSelectCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestBankSelectCommand;
 impl Command for RequestBankSelectCommand {
     type Response = u8;
@@ -1704,8 +1751,10 @@ impl Command for RequestBankSelectCommand {
 }
 
 // TODO: Implement this
+#[derive(Debug)]
 pub struct HandheldFunctionCommand;
 
+#[derive(Debug)]
 pub struct RequestAlarmCounterCommand;
 impl Command for RequestAlarmCounterCommand {
     type Response = u8;
@@ -1732,6 +1781,7 @@ impl Command for RequestAlarmCounterCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyPayoutFloatCommand {
     buffer: [u8; 3],
     has_hopper_number: bool,
@@ -1788,6 +1838,7 @@ impl Command for ModifyPayoutFloatCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestPayoutFloatCommand {
     buffer: [u8; 1],
     has_hopper_number: bool,
@@ -1839,6 +1890,7 @@ impl Command for RequestPayoutFloatCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestThermistorReadingCommand;
 impl Command for RequestThermistorReadingCommand {
     type Response = u8;
@@ -1865,6 +1917,7 @@ impl Command for RequestThermistorReadingCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct EmergencyStopCommand;
 impl Command for EmergencyStopCommand {
     type Response = u8;
@@ -1891,6 +1944,7 @@ impl Command for EmergencyStopCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestHopperCoinCommand;
 impl Command for RequestHopperCoinCommand {
     type Response = CurrencyToken;
@@ -1922,6 +1976,7 @@ impl Command for RequestHopperCoinCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestHopperDispenseCountCommand;
 impl Command for RequestHopperDispenseCountCommand {
     type Response = u32;
@@ -1953,6 +2008,7 @@ impl Command for RequestHopperDispenseCountCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct DispenseHopperCoinsCommand {
     buffer: [u8; 32],
     length: u8,
@@ -1964,15 +2020,18 @@ impl DispenseHopperCoinsCommand {
     }
 
     pub fn new_with_data(coins: u8, additional_data: &[u8]) -> Self {
-        let mut buffer = [coins; 32];
-        buffer[..31].copy_from_slice(additional_data);
+        const MAX_BUFFER_SIZE: usize = 32;
+
+        let mut buffer = [coins; MAX_BUFFER_SIZE];
+
+        let data_to_copy = additional_data.len().min(MAX_BUFFER_SIZE);
+        buffer[..data_to_copy].copy_from_slice(&additional_data[..data_to_copy]);
+
+        let command_length = (1 + additional_data.len()).min(MAX_BUFFER_SIZE) as u8;
+
         DispenseHopperCoinsCommand {
             buffer,
-            length: if additional_data.len() + 1 > 32 {
-                32
-            } else {
-                (additional_data.len() + 1) as u8
-            },
+            length: command_length,
         }
     }
 }
@@ -1999,6 +2058,7 @@ impl Command for DispenseHopperCoinsCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestHopperStatusCommand;
 impl Command for RequestHopperStatusCommand {
     type Response = HopperDispenseStatus;
@@ -2030,6 +2090,7 @@ impl Command for RequestHopperStatusCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyVariableSetCommand<const N: usize> {
     buffer: [u8; N],
 }
@@ -2064,6 +2125,7 @@ impl<const N: usize> Command for ModifyVariableSetCommand<N> {
     }
 }
 
+#[derive(Debug)]
 pub struct EnableHopperCommand {
     buffer: [u8; 1],
 }
@@ -2100,6 +2162,7 @@ impl Command for EnableHopperCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct TestHopperCommand;
 impl Command for TestHopperCommand {
     type Response = heapless::Vec<HopperFlag, 21>;
@@ -2126,6 +2189,7 @@ impl Command for TestHopperCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct PumpRngCommand<const N: usize> {
     buffer: [u8; N],
 }
@@ -2159,6 +2223,7 @@ impl<const N: usize> Command for PumpRngCommand<N> {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestCipherKeyCommand;
 impl Command for RequestCipherKeyCommand {
     type Response = ();
@@ -2177,6 +2242,7 @@ impl Command for RequestCipherKeyCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ReadBufferedBillEventsCommand;
 impl Command for ReadBufferedBillEventsCommand {
     type Response = BillValidatorPollResult;
@@ -2207,6 +2273,7 @@ impl Command for ReadBufferedBillEventsCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyBillIdCommand {
     buffer: [u8; 8],
 }
@@ -2251,6 +2318,7 @@ impl Command for ModifyBillIdCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestBillIdCommand {
     buffer: [u8; 1],
 }
@@ -2293,8 +2361,10 @@ impl Command for RequestBillIdCommand {
 }
 
 // TODO: Implement this, however the scaling factor is hardcoded for now
+#[derive(Debug)]
 pub struct RequestCountryScalingFactorCommand;
 
+#[derive(Debug)]
 pub struct RequestBillPositionCommand {
     buffer: [u8; 2],
 }
@@ -2330,6 +2400,7 @@ impl Command for RequestBillPositionCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RouteBillCommand {
     buffer: [u8; 1],
 }
@@ -2369,6 +2440,7 @@ impl Command for RouteBillCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyBillOperatingModeCommand {
     buffer: [u8; 1],
 }
@@ -2412,6 +2484,7 @@ impl Command for ModifyBillOperatingModeCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestBillOperatingModeCommand;
 impl Command for RequestBillOperatingModeCommand {
     type Response = (bool, bool); // (use_stacker, use_escrow)
@@ -2441,6 +2514,7 @@ impl Command for RequestBillOperatingModeCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct TestLampsCommand {
     buffer: [u8; 2],
 }
@@ -2476,6 +2550,7 @@ impl Command for TestLampsCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestIndividualAcceptCounterCommand {
     buffer: [u8; 1],
 }
@@ -2516,6 +2591,7 @@ impl Command for RequestIndividualAcceptCounterCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ReadOptoVoltagesCommand;
 impl Command for ReadOptoVoltagesCommand {
     type Response = ();
@@ -2543,6 +2619,7 @@ impl Command for ReadOptoVoltagesCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct PerformStackerCycleCommand;
 impl Command for PerformStackerCycleCommand {
     type Response = Option<StackerCycleError>;
@@ -2569,6 +2646,7 @@ impl Command for PerformStackerCycleCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct OperateBiDirectionalMotorsCommand {
     buffer: [u8; 3],
 }
@@ -2604,6 +2682,7 @@ impl Command for OperateBiDirectionalMotorsCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestCurrencyRevisionCommand {
     buffer: [u8; 2],
     has_country_code: bool,
@@ -2649,24 +2728,30 @@ impl Command for RequestCurrencyRevisionCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct UploadBillTablesCommand {
     buffer: [u8; 130], // block + line + 128 data
     data_len: u8,
 }
 impl UploadBillTablesCommand {
     pub fn new(block: u8, line: u8, data: &[u8]) -> Result<Self, ()> {
-        if data.len() > 128 {
+        const MAX_PAYLOAD_SIZE: usize = 128;
+        const COMMAND_BUFFER_SIZE: usize = 130;
+
+        if data.len() > MAX_PAYLOAD_SIZE {
             return Err(());
         }
 
-        let mut buffer = [0u8; 130];
+        let mut buffer = [0u8; COMMAND_BUFFER_SIZE];
         buffer[0] = block;
         buffer[1] = line;
-        buffer[2..2 + data.len()].copy_from_slice(data);
+
+        let payload_start = 2;
+        buffer[payload_start..payload_start + data.len()].copy_from_slice(data);
 
         Ok(UploadBillTablesCommand {
             buffer,
-            data_len: (data.len() + 2) as u8,
+            data_len: (2 + data.len()) as u8, // header + payload length
         })
     }
 }
@@ -2696,6 +2781,7 @@ impl Command for UploadBillTablesCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct BeginBillTableUpgradeCommand;
 impl Command for BeginBillTableUpgradeCommand {
     type Response = ();
@@ -2722,6 +2808,7 @@ impl Command for BeginBillTableUpgradeCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct FinishBillTableUpgradeCommand;
 impl Command for FinishBillTableUpgradeCommand {
     type Response = ();
@@ -2748,6 +2835,7 @@ impl Command for FinishBillTableUpgradeCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestFirmwareUpgradeCapability {
     buffer: [u8; 1],
     has_module_identifier: bool,
@@ -2797,24 +2885,30 @@ impl Command for RequestFirmwareUpgradeCapability {
     }
 }
 
+#[derive(Debug)]
 pub struct UploadFirmwareCommand {
     buffer: [u8; 130], // block + line + 128 data
     data_len: u8,
 }
 impl UploadFirmwareCommand {
     pub fn new(block: u8, line: u8, data: &[u8]) -> Result<Self, ()> {
-        if data.len() > 128 {
+        const MAX_PAYLOAD_SIZE: usize = 128;
+        const COMMAND_BUFFER_SIZE: usize = 130;
+
+        if data.len() > MAX_PAYLOAD_SIZE {
             return Err(());
         }
 
-        let mut buffer = [0u8; 130];
+        let mut buffer = [0u8; COMMAND_BUFFER_SIZE];
         buffer[0] = block;
         buffer[1] = line;
-        buffer[2..2 + data.len()].copy_from_slice(data);
+
+        let payload_start = 2;
+        buffer[payload_start..payload_start + data.len()].copy_from_slice(data);
 
         Ok(UploadFirmwareCommand {
             buffer,
-            data_len: (data.len() + 2) as u8,
+            data_len: (2 + data.len()) as u8, // header + payload length
         })
     }
 }
@@ -2844,6 +2938,7 @@ impl Command for UploadFirmwareCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct BeginFirmwareUpgradeCommand {
     buffer: [u8; 1],
     has_module_identifier: bool,
@@ -2886,6 +2981,7 @@ impl Command for BeginFirmwareUpgradeCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct FinishFirmwareUpgradeCommand;
 impl Command for FinishFirmwareUpgradeCommand {
     type Response = ();
@@ -2912,6 +3008,7 @@ impl Command for FinishFirmwareUpgradeCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct SetAcceptLimitCommand {
     buffer: [u8; 1],
 }
@@ -2945,6 +3042,7 @@ impl Command for SetAcceptLimitCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct DispenseHopperValueCommand {
     buffer: [u8; 10],
 }
@@ -3011,6 +3109,7 @@ impl Command for DispenseHopperValueCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestHopperPollingValueCommand;
 impl Command for RequestHopperPollingValueCommand {
     type Response = HopperDispenseValueStatus;
@@ -3045,6 +3144,7 @@ impl Command for RequestHopperPollingValueCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct EmergencyStopValueCommand;
 impl Command for EmergencyStopValueCommand {
     type Response = u16;
@@ -3074,6 +3174,7 @@ impl Command for EmergencyStopValueCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestHopperCoinValueCommand {
     buffer: [u8; 1],
 }
@@ -3123,6 +3224,7 @@ impl Command for RequestHopperCoinValueCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestIndexedHopperDispenseCountCommand {
     buffer: [u8; 1],
 }
@@ -3163,6 +3265,7 @@ impl Command for RequestIndexedHopperDispenseCountCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ReadBarcodeDataCommand;
 impl Command for ReadBarcodeDataCommand {
     type Response = ();
@@ -3181,6 +3284,7 @@ impl Command for ReadBarcodeDataCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestMoneyInCommand;
 impl Command for RequestMoneyInCommand {
     type Response = u32;
@@ -3212,6 +3316,7 @@ impl Command for RequestMoneyInCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestMoneyOutCommand;
 impl Command for RequestMoneyOutCommand {
     type Response = u32;
@@ -3243,6 +3348,7 @@ impl Command for RequestMoneyOutCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ClearMoneyCountersCommand;
 impl Command for ClearMoneyCountersCommand {
     type Response = ();
@@ -3270,6 +3376,7 @@ impl Command for ClearMoneyCountersCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct PayMoneyOutCommand {
     buffer: [u8; 4],
 }
@@ -3306,6 +3413,7 @@ impl Command for PayMoneyOutCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct VerifyMoneyOutCommand;
 impl Command for VerifyMoneyOutCommand {
     type Response = ChangerPollResult;
@@ -3333,6 +3441,7 @@ impl Command for VerifyMoneyOutCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestActivityRegisterCommand;
 impl Command for RequestActivityRegisterCommand {
     type Response = heapless::Vec<ChangerFlags, 13>;
@@ -3359,6 +3468,7 @@ impl Command for RequestActivityRegisterCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestErrorStatusCommand;
 impl Command for RequestErrorStatusCommand {
     type Response = (ChangerDevice, ChangerError);
@@ -3388,6 +3498,7 @@ impl Command for RequestErrorStatusCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct PurgeHopperCommand {
     buffer: [u8; 2],
 }
@@ -3425,6 +3536,7 @@ impl Command for PurgeHopperCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyHopperBalanceCommand {
     buffer: [u8; 3],
 }
@@ -3464,6 +3576,7 @@ impl Command for ModifyHopperBalanceCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestHopperBalanceCommand {
     buffer: [u8; 1],
 }
@@ -3514,6 +3627,7 @@ impl Command for RequestHopperBalanceCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyCashBoxValueCommand {
     buffer: [u8; 4],
 }
@@ -3550,6 +3664,7 @@ impl Command for ModifyCashBoxValueCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestCashBoxValueCommand;
 impl Command for RequestCashBoxValueCommand {
     type Response = u32;
@@ -3581,6 +3696,7 @@ impl Command for RequestCashBoxValueCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ModifyRtcCommand {
     buffer: [u8; 4],
 }
@@ -3616,6 +3732,7 @@ impl Command for ModifyRtcCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestRtcCommand;
 impl Command for RequestRtcCommand {
     type Response = u32; // Unix epoch seconds
@@ -3648,8 +3765,11 @@ impl Command for RequestRtcCommand {
 }
 
 // TODO: implement when encryption is supported
+#[derive(Debug)]
 pub struct ReadEncryptedEventsCommand;
+#[derive(Debug)]
 pub struct RequestEncryptedHopperStatusCommand;
+#[derive(Debug)]
 pub struct RequestEncryptedMonetaryIdCommand;
 
 #[repr(u8)]
@@ -3659,6 +3779,7 @@ pub enum DivertMode {
     AcceptCoins = 0,
     ReturnCoins = 1,
 }
+#[derive(Debug)]
 pub struct OperateEscrowCommand {
     buffer: [u8; 1],
 }
@@ -3695,6 +3816,7 @@ impl Command for OperateEscrowCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestEscrowStatusCommand;
 impl Command for RequestEscrowStatusCommand {
     type Response = (EscrowOperatingStatus, EscrowLevelStatus, EscrowFaultCode);
@@ -3729,6 +3851,7 @@ impl Command for RequestEscrowStatusCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestServiceStatusCommand {
     buffer: [u8; 1],
 }
@@ -3772,6 +3895,7 @@ impl Command for RequestServiceStatusCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct ClearCommsStatusVariablesCommand;
 impl Command for ClearCommsStatusVariablesCommand {
     type Response = ();
@@ -3798,6 +3922,7 @@ impl Command for ClearCommsStatusVariablesCommand {
     }
 }
 
+#[derive(Debug)]
 pub struct RequestCommsStatusVariablesCommand;
 impl Command for RequestCommsStatusVariablesCommand {
     type Response = (u8, u8, u8);

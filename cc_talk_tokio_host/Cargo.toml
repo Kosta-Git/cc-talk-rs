@@ -13,7 +13,6 @@ cc_talk_host = { path = "../cc_talk_host", features = ["tracing", "std"] }
 tokio = { version = "1.47.0", features = [
   "full", # TODO: Find out which features are actually needed
 ] }
-tokio-serial = "5.4.5"
 tracing = { version = "0.1.41" }
 thiserror = "2.0.12"
 

@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, async_fn_in_trait)]
 
 use cc_talk_core::cc_talk::{Category, Device, Manufacturer, Packet, PacketError, SerialCode};
 use cc_talk_host::{
@@ -86,6 +86,8 @@ impl From<ParseResponseError> for CommandError {
         }
     }
 }
+
+pub type DeviceResult<T> = Result<T, CommandError>;
 
 pub trait DeviceCommon {
     fn get_device(&self) -> &Device;

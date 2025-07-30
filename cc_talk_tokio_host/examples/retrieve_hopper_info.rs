@@ -1,11 +1,15 @@
 use std::time::Duration;
 
-use cc_talk_core::cc_talk::{Category, ChecksumType, Device, Manufacturer};
+use cc_talk_core::cc_talk::{Category, ChecksumType, Device};
 use cc_talk_tokio_host::{
     device::{base::DeviceCommon, payout::PayoutDevice},
     transport::{retry::RetryConfig, tokio_transport::CcTalkTokioTransport},
 };
-use tokio::sync::mpsc;
+use tokio::{
+    fs,
+    process::{Child, Command},
+    sync::mpsc,
+};
 use tracing::{error, info};
 
 #[tokio::main]
@@ -63,5 +67,29 @@ async fn main() {
     info!("Product Code: {}", product_code);
     info!("Software Revision: {}", software_revision);
 
-    tokio::time::sleep(Duration::from_secs(5)).await;
+    if product_code == "WHM 100.C" {
+        let _ = hopper.whm_100_speed_adjust(true, 0).await; // 0 is 30%, 7 is 100%
+    }
+
+    let _ = hopper.enable_hopper().await;
+    let _ = hopper.payout_serial_number(1).await;
+
+    let _ = tokio::spawn(async move {
+        let mut remaining = u8::MAX;
+
+        while remaining > 0 {
+            let status = hopper.get_payout_status().await.unwrap();
+            let sensor = hopper.get_sensor_status().await.unwrap();
+            let self_test = hopper.self_test().await.unwrap();
+
+            info!("Hopper Status: {}", status);
+            info!("Sensor Status: {}", sensor.1);
+            info!("Self Test Result: {:?}", self_test);
+
+            remaining = status.coins_remaining;
+        }
+    })
+    .await;
+
+    tokio::time::sleep(Duration::from_secs(2)).await;
 }
