@@ -1,7 +1,14 @@
 [package]
 name = "cc_talk_tokio_host"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
+license = "GPL-3.0-or-later"
+authors = ["Kosta S. <github.operation464@simplelogin.com>"]
+description = "ccTalk tokio crate based on cc_talk_host, it provides a tokio-based transport implementation"
+keywords = ["no-std", "ccTalk", "protocol"]
+repository = "https://github.com/Kosta-Git/cc-talk-rs/"
+readme = "../README.md"
+exclude = [".gitignore"]
 
 [[example]]
 name = "retrieve_hopper_info"
@@ -16,12 +23,15 @@ name = "coin_validator"
 name = "bill_validator"
 
 [dependencies]
-cc_talk_core = { path = "../cc_talk_core", features = ["std"] }
-cc_talk_host = { path = "../cc_talk_host", features = ["tracing", "std"] }
-
-tokio = { version = "1.47.0", features = [
-  "full", # TODO: Find out which features are actually needed
+cc_talk_core = { version = "0.0.1", path = "../cc_talk_core", features = [
+  "std",
 ] }
+cc_talk_host = { version = "0.0.1", path = "../cc_talk_host", features = [
+  "tracing",
+  "std",
+] }
+
+tokio = { version = "1.47.0", features = ["full"] }
 tracing = { version = "0.1.41" }
 thiserror = "2.0.12"
 
