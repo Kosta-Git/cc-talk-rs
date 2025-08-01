@@ -666,10 +666,9 @@ mod tests {
         let response = tokio::time::timeout(Duration::from_millis(200), response_rx)
             .await
             .expect("Response timeout")
-            .expect("Response channel error")
-            .expect("Transport error");
+            .expect("Response channel error");
 
-        assert_eq!(response[3], Header::NACK as u8);
+        assert_eq!(response.err(), Some(TransportError::Nack));
 
         transport_handle.abort();
     }
