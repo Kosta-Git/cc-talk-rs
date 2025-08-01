@@ -497,7 +497,7 @@ impl BelongsTo<CorePlusCommandSet> for SwitchBaudRateCommand {}
 pub struct SwitchEncryptionKeyCommand;
 impl BelongsTo<CorePlusCommandSet> for SwitchEncryptionKeyCommand {}
 
-#[derive(Debug, Eq, PartialEq)] // TODO: see if copy and clone here would cause issues
+#[derive(Debug, Eq, PartialEq)]
 pub struct DataStreamCommand<'a> {
     buffer: &'a [u8],
 }

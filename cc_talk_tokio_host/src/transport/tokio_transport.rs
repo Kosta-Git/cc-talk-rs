@@ -341,6 +341,10 @@ async fn handle_message(
         ));
     }
 
+    if response_packet.get_header().unwrap_or(Header::Reply) == Header::NACK {
+        return Err((TransportError::Nack, "received NACK response"));
+    };
+
     Ok(read_buffer[..bytes_read].to_vec())
 }
 

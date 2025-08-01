@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-use std::time::Duration;
 
 use cc_talk_core::cc_talk::{
     BillRouteCode, BillRoutingError, BillValidatorPollResult, BillValidatorPollResultError,
@@ -302,9 +301,10 @@ impl Command for ReadOptoStatesCommand {
         match payload.len() {
             1 => Ok(payload[0]),
             2..=usize::MAX => {
-                // TODO: Add defmt/log optional logging here with a warning about unexpected data
-                // length. Might need to make this return a dynamic size, or fixed size like 4u8
-                // which should be plenty for opto states.
+                crate::log::warning!(
+                    "expected size of 1, but got {} instead. Maybe some information got lost.",
+                    payload.len()
+                );
                 Ok(payload[0]) // Assuming the first byte is the opto states.)
             }
             _ => Err(ParseResponseError::DataLengthMismatch(1, payload.len())),
@@ -1062,6 +1062,11 @@ impl RequestPayoutAbsoluteCountCommand {
         }
     }
 }
+impl Default for RequestPayoutAbsoluteCountCommand {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Command for RequestPayoutAbsoluteCountCommand {
     type Response = u16;
 
@@ -1437,6 +1442,11 @@ impl RequestPayoutCapacityCommand {
             buffer: [hopper_number],
             has_hopper_number: true,
         }
+    }
+}
+impl Default for RequestPayoutCapacityCommand {
+    fn default() -> Self {
+        Self::new()
     }
 }
 impl Command for RequestPayoutCapacityCommand {
@@ -1882,6 +1892,12 @@ impl RequestPayoutFloatCommand {
             buffer: [hopper_number],
             has_hopper_number: true,
         }
+    }
+}
+
+impl Default for RequestPayoutFloatCommand {
+    fn default() -> Self {
+        Self::new()
     }
 }
 impl Command for RequestPayoutFloatCommand {
@@ -2733,6 +2749,12 @@ impl RequestCurrencyRevisionCommand {
         })
     }
 }
+
+impl Default for RequestCurrencyRevisionCommand {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Command for RequestCurrencyRevisionCommand {
     type Response = ();
 
@@ -2881,6 +2903,12 @@ impl RequestFirmwareUpgradeCapability {
         }
     }
 }
+
+impl Default for RequestFirmwareUpgradeCapability {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Command for RequestFirmwareUpgradeCapability {
     type Response = FirmwareStorageType;
 
@@ -2982,6 +3010,12 @@ impl BeginFirmwareUpgradeCommand {
             buffer: [module_identifier],
             has_module_identifier: true,
         }
+    }
+}
+
+impl Default for BeginFirmwareUpgradeCommand {
+    fn default() -> Self {
+        Self::new()
     }
 }
 impl Command for BeginFirmwareUpgradeCommand {

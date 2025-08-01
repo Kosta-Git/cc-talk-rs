@@ -93,9 +93,7 @@ impl BillValidator {
             .map_err(CommandError::from)
     }
 
-    pub async fn request_all_bill_id_range(
-        &self,
-    ) -> DeviceResult<Vec<(u8, Option<CurrencyToken>)>> {
+    pub async fn request_all_bill_id(&self) -> DeviceResult<Vec<(u8, Option<CurrencyToken>)>> {
         let mut bills = std::vec::Vec::with_capacity(16);
         for i in 0..16 {
             if let Ok(bill) = self.request_bill_id(i).await {
@@ -166,6 +164,13 @@ impl BillValidator {
     pub async fn poll(&self) -> DeviceResult<BillValidatorPollResult> {
         let response_packet = self.send_command(ReadBufferedBillEventsCommand).await?;
         ReadBufferedBillEventsCommand
+            .parse_response(response_packet.get_data()?)
+            .map_err(CommandError::from)
+    }
+
+    pub async fn get_polling_priority(&self) -> DeviceResult<PollingPriority> {
+        let response_packet = self.send_command(RequestPollingPriorityCommand).await?;
+        RequestPollingPriorityCommand
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)
     }

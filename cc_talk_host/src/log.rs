@@ -141,7 +141,7 @@ macro_rules! info {
     };
 }
 
-macro_rules! _warn {
+macro_rules! warning {
     ($s:literal $(, $x:expr)* $(,)?) => {
         {
             #[cfg(feature = "tracing")]
@@ -235,3 +235,4 @@ impl<'a> defmt::Format for Bytes<'a> {
 pub(crate) use debug;
 pub(crate) use error;
 pub(crate) use info;
+pub(crate) use warning;
