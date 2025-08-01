@@ -119,7 +119,6 @@ pub trait DeviceCommon {
 
     async fn get_manufacturer_id(&self) -> Result<Manufacturer, CommandError> {
         let response_packet = self.send_command(RequestManufacturerIdCommand).await?;
-        tracing::info!("{:?}", response_packet.get_data()?);
         RequestManufacturerIdCommand
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)

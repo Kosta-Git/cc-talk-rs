@@ -61,7 +61,7 @@ async fn main() {
     }
 
     let _ = hopper.enable_hopper().await;
-    let _ = hopper.payout_serial_number(1).await;
+    let _ = hopper.payout_serial_number(5).await;
 
     let _ = tokio::spawn(async move {
         let mut remaining = u8::MAX;
@@ -76,6 +76,8 @@ async fn main() {
             info!("Self Test Result: {:?}", self_test);
 
             remaining = status.coins_remaining;
+
+            tokio::time::sleep(Duration::from_millis(250)).await;
         }
     })
     .await;
