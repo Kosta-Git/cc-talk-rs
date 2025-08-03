@@ -61,24 +61,24 @@ async fn main() {
     }
 
     let _ = hopper.enable_hopper().await;
-    let _ = hopper.payout_serial_number(5).await;
+    let _ = hopper.payout_serial_number(30).await;
 
     let _ = tokio::spawn(async move {
         let mut remaining = u8::MAX;
 
         while remaining > 0 {
-            let status = hopper.get_payout_status().await.unwrap();
-            let sensor = hopper.get_sensor_status().await.unwrap();
-            let self_test = hopper.self_test().await.unwrap();
-
-            info!("Hopper Status: {}", status);
-            info!("Sensor Status: {}", sensor.1);
-            info!("Self Test Result: {:?}", self_test);
-
-            remaining = status.coins_remaining;
-
-            tokio::time::sleep(Duration::from_millis(250)).await;
+            match hopper.get_payout_status().await {
+                Ok(status) => {
+                    info!("Hopper Status: {}", status);
+                    remaining = status.coins_remaining;
+                }
+                Err(e) => {
+                    error!("Error getting payout status: {}", e);
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(1000)).await;
         }
+        let _ = hopper.disable_hopper().await;
     })
     .await;
 
