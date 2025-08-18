@@ -48,7 +48,7 @@ async fn main() {
         Address::Single(addr) => addr,
         Address::SingleAndRange(addr, _) => addr,
     };
-    let bill_validator = BillValidator::new(
+    let mut bill_validator = BillValidator::new(
         Device::new(
             bill_validator_address,
             Category::BillValidator,
@@ -85,18 +85,19 @@ async fn main() {
         info!("Master inhibit is OFF.");
     }
 
-    bill_validator
+    let bill_values = bill_validator
         .request_all_bill_id()
         .await
         .unwrap()
         .iter()
         .filter(|entry| entry.1.is_some())
         .to_owned()
-        .for_each(|entry| {
+        .map(|entry| {
             let bill = entry.1.clone().expect("");
             match bill {
                 CurrencyToken::Token => {
                     info!("bill ID {}: Token", entry.0);
+                    (entry.0, 0)
                 }
                 CurrencyToken::Currency(currency_value) => {
                     info!(
@@ -105,9 +106,11 @@ async fn main() {
                         currency_value.country_code(),
                         currency_value.monetary_value()
                     );
+                    (entry.0, currency_value.smallest_unit_value())
                 }
             }
-        });
+        })
+        .collect::<Vec<_>>();
 
     // You could enable/disable some coins based on your needs, by using the coin IDs.
     let inhibits = bill_validator.get_bill_inhibits().await.unwrap();
@@ -142,7 +145,14 @@ async fn main() {
                     for event in poll.events {
                         match event {
                             BillEvent::Credit(credit) => {
-                                info!("bill in stacker: {}", credit);
+                                info!(
+                                    "bill in stacker: {} value {}",
+                                    credit,
+                                    bill_values
+                                        .iter()
+                                        .find(|v| v.0 == credit)
+                                        .map_or(0, |v| v.1)
+                                );
                             }
                             BillEvent::PendingCredit(credit) => {
                                 info!("bill in escrow: {}", credit);

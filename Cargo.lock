@@ -64,7 +64,7 @@ checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 
 [[package]]
 name = "cc_talk_core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "defmt",
  "heapless",
@@ -72,7 +72,7 @@ dependencies = [
 
 [[package]]
 name = "cc_talk_device"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "cc_talk_core",
  "defmt",
@@ -82,7 +82,7 @@ dependencies = [
 
 [[package]]
 name = "cc_talk_host"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "cc_talk_core",
  "defmt",
@@ -92,7 +92,7 @@ dependencies = [
 
 [[package]]
 name = "cc_talk_tokio_host"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "cc_talk_core",
  "cc_talk_host",

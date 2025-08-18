@@ -212,7 +212,7 @@ impl TryFrom<(&[u8], u8)> for BillValidatorPollResult {
         };
 
         let expected_len = (events_to_parse as usize * 2) + 1;
-        if value.len() != expected_len {
+        if value.len() != expected_len && value.len() != 11 {
             return Err(BillValidatorPollResultError::NotEnoughEvents);
         }
 
@@ -258,19 +258,18 @@ mod test {
     }
 
     #[test]
-    fn too_many_events_errors() {
-        let buffer = [6u8];
-        let result = BillValidatorPollResult::try_from(&buffer[..]);
-        assert!(matches!(
-            result,
-            Err(BillValidatorPollResultError::TooManyEvents)
-        ));
+    fn lost_events() {
+        let buffer = [6u8, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0];
+        let result = BillValidatorPollResult::try_from((&buffer[..], 0)).unwrap();
+        assert_eq!(result.event_counter, 6);
+        assert_eq!(result.lost_events, 1);
+        assert_eq!(result.events.len(), 5);
     }
 
     #[test]
     fn error_on_unexpected_len() {
         let buffer = [3u8, 1, 2, 3, 4];
-        let result = BillValidatorPollResult::try_from(&buffer[..]);
+        let result = BillValidatorPollResult::try_from((&buffer[..], 0));
         assert!(matches!(
             result,
             Err(BillValidatorPollResultError::NotEnoughEvents)
@@ -278,7 +277,7 @@ mod test {
     }
 
     #[test]
-    fn prse_events() {
+    fn parse_events() {
         let buffer = [
             5u8, //  5 events
             1, 0, // credit 1
@@ -289,7 +288,7 @@ mod test {
         ];
 
         let result =
-            BillValidatorPollResult::try_from(&buffer[..]).expect("Failed to parse events");
+            BillValidatorPollResult::try_from((&buffer[..], 0)).expect("Failed to parse events");
 
         assert_eq!(result.event_counter, 5);
         assert_eq!(result.events.len(), 5);

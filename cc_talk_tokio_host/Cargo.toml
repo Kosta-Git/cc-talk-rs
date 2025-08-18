@@ -1,6 +1,6 @@
 [package]
 name = "cc_talk_tokio_host"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 license = "GPL-3.0-or-later"
 authors = ["Kosta S. <github.operation464@simplelogin.com>"]
@@ -23,10 +23,10 @@ name = "coin_validator"
 name = "bill_validator"
 
 [dependencies]
-cc_talk_core = { version = "0.0.1", path = "../cc_talk_core", features = [
+cc_talk_core = { version = "0.0.2", path = "../cc_talk_core", features = [
   "std",
 ] }
-cc_talk_host = { version = "0.0.1", path = "../cc_talk_host", features = [
+cc_talk_host = { version = "0.0.2", path = "../cc_talk_host", features = [
   "tracing",
   "std",
 ] }

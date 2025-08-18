@@ -2314,17 +2314,19 @@ impl Command for ReadBufferedBillEventsCommand {
         &self,
         response_payload: &[u8],
     ) -> Result<Self::Response, ParseResponseError> {
-        BillValidatorPollResult::try_from(response_payload).map_err(|error| match error {
-            BillValidatorPollResultError::NotEnoughEvents => {
-                ParseResponseError::ParseError("unexpected number of events (too few)")
-            }
-            BillValidatorPollResultError::TooManyEvents => {
-                ParseResponseError::ParseError("unexpected number of events (too many)")
-            }
-            BillValidatorPollResultError::InvalidPayload => {
-                ParseResponseError::DataLengthMismatch(1357911, response_payload.len())
-            }
-        })
+        BillValidatorPollResult::try_from((response_payload, self.last_event_counter)).map_err(
+            |error| match error {
+                BillValidatorPollResultError::NotEnoughEvents => {
+                    ParseResponseError::ParseError("unexpected number of events (too few)")
+                }
+                BillValidatorPollResultError::TooManyEvents => {
+                    ParseResponseError::ParseError("unexpected number of events (too many)")
+                }
+                BillValidatorPollResultError::InvalidPayload => {
+                    ParseResponseError::DataLengthMismatch(1357911, response_payload.len())
+                }
+            },
+        )
     }
 }
 

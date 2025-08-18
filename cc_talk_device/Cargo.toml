@@ -1,6 +1,6 @@
 [package]
 name = "cc_talk_device"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 license = "GPL-3.0-or-later"
 authors = ["Kosta S. <github.operation464@simplelogin.com>"]
@@ -12,7 +12,7 @@ exclude = [".gitignore"]
 
 
 [dependencies]
-cc_talk_core = { version = "0.0.1", path = "../cc_talk_core", default-features = false }
+cc_talk_core = { version = "0.0.2", path = "../cc_talk_core", default-features = false }
 
 defmt = { version = "1.0.1", optional = true }
 tracing = { version = "0.1.41", optional = true }

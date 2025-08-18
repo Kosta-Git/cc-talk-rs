@@ -13,11 +13,16 @@ use super::base::{CommandError, DeviceCommon, DeviceResult};
 pub struct BillValidator {
     pub device: Device,
     pub sender: mpsc::Sender<TransportMessage>,
+    pub event_counter: u8,
 }
 
 impl BillValidator {
     pub fn new(device: Device, sender: mpsc::Sender<TransportMessage>) -> Self {
-        Self { device, sender }
+        Self {
+            device,
+            sender,
+            event_counter: 0,
+        }
     }
 
     pub async fn set_master_inhibit(&self, inhibit: bool) -> DeviceResult<()> {
@@ -161,11 +166,16 @@ impl BillValidator {
             .map_err(CommandError::from)
     }
 
-    pub async fn poll(&self) -> DeviceResult<BillValidatorPollResult> {
-        let response_packet = self.send_command(ReadBufferedBillEventsCommand).await?;
-        ReadBufferedBillEventsCommand
+    pub async fn poll(&mut self) -> DeviceResult<BillValidatorPollResult> {
+        let response_packet = self
+            .send_command(ReadBufferedBillEventsCommand::default())
+            .await?;
+        ReadBufferedBillEventsCommand::new(self.event_counter)
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)
+            .inspect(|result| {
+                self.event_counter = result.event_counter;
+            })
     }
 
     pub async fn get_polling_priority(&self) -> DeviceResult<PollingPriority> {
