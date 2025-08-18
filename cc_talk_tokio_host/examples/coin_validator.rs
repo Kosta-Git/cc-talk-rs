@@ -46,7 +46,7 @@ async fn main() {
         Address::Single(addr) => addr,
         Address::SingleAndRange(addr, _) => addr,
     };
-    let coin_validator = CoinValidator::new(
+    let mut coin_validator = CoinValidator::new(
         Device::new(
             coin_validator_address,
             Category::CoinAcceptor,
@@ -137,6 +137,9 @@ async fn main() {
                         "===================== [counter {}] =====================",
                         poll.event_counter
                     );
+                    if poll.lost_events > 0 {
+                        error!("lost events: {}", poll.lost_events);
+                    }
                     for event in poll.events {
                         match event {
                             CoinEvent::Error(coin_acceptor_error) => {
@@ -151,6 +154,9 @@ async fn main() {
                                     "coin {} in sorter {:?} ",
                                     coin_credit.credit, coin_credit.sorter_path
                                 )
+                            }
+                            CoinEvent::Reset => {
+                                info!("coin validator reset");
                             }
                         }
                     }

@@ -146,16 +146,20 @@ impl core::fmt::Display for BillEventReason {
     }
 }
 
+const MAX_BILL_EVENT_SIZE: usize = 5;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BillValidatorPollResult {
     pub event_counter: u8,
-    pub events: heapless::Vec<BillEvent, 5>,
+    pub events: heapless::Vec<BillEvent, MAX_BILL_EVENT_SIZE>,
+    pub lost_events: u8,
 }
 impl BillValidatorPollResult {
     pub fn new(event_counter: u8) -> Self {
         BillValidatorPollResult {
             event_counter,
             events: heapless::Vec::new(),
+            lost_events: 0,
         }
     }
 
@@ -174,26 +178,46 @@ pub enum BillValidatorPollResultError {
     TooManyEvents,
     InvalidPayload,
 }
-impl TryFrom<&[u8]> for BillValidatorPollResult {
+impl TryFrom<(&[u8], u8)> for BillValidatorPollResult {
     type Error = BillValidatorPollResultError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: (&[u8], u8)) -> Result<Self, Self::Error> {
+        let (value, event_counter) = value;
         if value.is_empty() {
             return Err(BillValidatorPollResultError::InvalidPayload);
         }
 
-        let announced_events = value[0];
-        if announced_events > 5 {
-            return Err(BillValidatorPollResultError::TooManyEvents);
+        let received_event_counter = value[0];
+        if received_event_counter == 0 {
+            // No events, just a reset
+            return Ok(BillValidatorPollResult {
+                event_counter,
+                events: heapless::Vec::new(),
+                lost_events: 0,
+            });
         }
 
-        let expected_len = (announced_events as usize * 2) + 1;
+        let events_to_parse = if received_event_counter >= event_counter {
+            received_event_counter - event_counter
+        } else {
+            (255 - event_counter) + received_event_counter
+        };
+
+        let lost_events = events_to_parse.saturating_sub(MAX_BILL_EVENT_SIZE as u8);
+
+        let events_to_parse = if events_to_parse > MAX_BILL_EVENT_SIZE as u8 {
+            MAX_BILL_EVENT_SIZE as u8
+        } else {
+            events_to_parse
+        };
+
+        let expected_len = (events_to_parse as usize * 2) + 1;
         if value.len() != expected_len {
             return Err(BillValidatorPollResultError::NotEnoughEvents);
         }
 
         let mut events = heapless::Vec::new();
-        for i in 0..announced_events {
+        for i in 0..events_to_parse {
             let index_base = (i * 2) as usize + 1;
             let result_a = value[index_base];
             let result_b = value[index_base + 1];
@@ -203,8 +227,9 @@ impl TryFrom<&[u8]> for BillValidatorPollResult {
         }
 
         Ok(BillValidatorPollResult {
-            event_counter: announced_events,
+            event_counter: received_event_counter,
             events,
+            lost_events,
         })
     }
 }
@@ -216,8 +241,8 @@ mod test {
     #[test]
     fn parse_zero_events() {
         let buffer = [0u8];
-        let result =
-            BillValidatorPollResult::try_from(&buffer[..]).expect("Failed to parse zero events");
+        let result = BillValidatorPollResult::try_from((&buffer[..], 0))
+            .expect("Failed to parse zero events");
         assert_eq!(result.event_counter, 0);
         assert!(result.is_empty());
     }
@@ -225,7 +250,7 @@ mod test {
     #[test]
     fn should_error_on_empty() {
         let buffer = [];
-        let result = BillValidatorPollResult::try_from(&buffer[..]);
+        let result = BillValidatorPollResult::try_from((&buffer[..], 0));
         assert!(matches!(
             result,
             Err(BillValidatorPollResultError::InvalidPayload)

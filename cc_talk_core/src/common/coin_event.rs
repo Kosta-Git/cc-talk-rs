@@ -28,6 +28,7 @@ pub struct CoinCredit {
 pub enum CoinEvent {
     Error(CoinAcceptorError),
     Credit(CoinCredit),
+    Reset,
 }
 impl CoinEvent {
     pub fn new(result_a: u8, result_b: u8) -> Self {
@@ -51,16 +52,20 @@ impl CoinEvent {
     }
 }
 
+const MAX_COIN_EVENT_SIZE: usize = 5;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoinAcceptorPollResult {
     pub event_counter: u8,
-    pub events: heapless::Vec<CoinEvent, 5>,
+    pub lost_events: u8,
+    pub events: heapless::Vec<CoinEvent, MAX_COIN_EVENT_SIZE>,
 }
 impl CoinAcceptorPollResult {
     pub fn new(event_counter: u8) -> Self {
         CoinAcceptorPollResult {
             event_counter,
             events: heapless::Vec::new(),
+            lost_events: 0,
         }
     }
 
@@ -79,26 +84,48 @@ pub enum CoinAcceptorPollResultError {
     TooManyEvents,
     InvalidPayload,
 }
-impl TryFrom<&[u8]> for CoinAcceptorPollResult {
+impl TryFrom<(&[u8], u8)> for CoinAcceptorPollResult {
     type Error = CoinAcceptorPollResultError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: (&[u8], u8)) -> Result<Self, Self::Error> {
+        let (value, event_counter) = value;
         if value.is_empty() {
             return Err(CoinAcceptorPollResultError::InvalidPayload);
         }
 
-        let announced_events = value[0];
-        if announced_events > 5 {
-            return Err(CoinAcceptorPollResultError::TooManyEvents);
+        let received_event_counter = value[0];
+
+        if received_event_counter == 0 {
+            let mut events = heapless::Vec::new();
+            events.push(CoinEvent::Reset).ok();
+            return Ok(CoinAcceptorPollResult {
+                event_counter,
+                events,
+                lost_events: 0,
+            });
         }
 
-        let expected_len = (announced_events as usize * 2) + 1;
+        let events_to_parse = if received_event_counter >= event_counter {
+            received_event_counter - event_counter
+        } else {
+            (255 - event_counter) + received_event_counter
+        };
+
+        let lost_events = events_to_parse.saturating_sub(MAX_COIN_EVENT_SIZE as u8);
+
+        let events_to_parse = if events_to_parse > MAX_COIN_EVENT_SIZE as u8 {
+            MAX_COIN_EVENT_SIZE as u8
+        } else {
+            events_to_parse
+        };
+
+        let expected_len = (events_to_parse as usize * 2) + 1;
         if value.len() < expected_len {
             return Err(CoinAcceptorPollResultError::NotEnoughEvents);
         }
 
         let mut events = heapless::Vec::new();
-        for i in 0..announced_events {
+        for i in 0..events_to_parse {
             let index_base = (i * 2) as usize + 1;
             let result_a = value[index_base];
             let result_b = value[index_base + 1];
@@ -106,7 +133,8 @@ impl TryFrom<&[u8]> for CoinAcceptorPollResult {
         }
 
         Ok(CoinAcceptorPollResult {
-            event_counter: announced_events,
+            event_counter: received_event_counter,
+            lost_events,
             events,
         })
     }
@@ -121,16 +149,18 @@ mod test {
         let buffer = [0u8];
 
         let result =
-            CoinAcceptorPollResult::try_from(&buffer[..]).expect("should parse zero events");
+            CoinAcceptorPollResult::try_from((&buffer[..], 0)).expect("should parse zero events");
 
         assert_eq!(result.event_counter, 0);
-        assert!(result.is_empty());
+        assert_eq!(result.lost_events, 0);
+        assert_eq!(result.events.len(), 1);
+        assert_eq!(result.events[0], CoinEvent::Reset);
     }
 
     #[test]
     fn should_error_on_empty() {
         let buffer = [];
-        let result = CoinAcceptorPollResult::try_from(&buffer[..]);
+        let result = CoinAcceptorPollResult::try_from((&buffer[..], 0));
         assert_eq!(
             result,
             Err(CoinAcceptorPollResultError::InvalidPayload),
@@ -139,20 +169,18 @@ mod test {
     }
 
     #[test]
-    fn too_many_events_errors() {
-        let buffer = [6u8]; // We expect 6 events, even if 1byte is provided
-        let result = CoinAcceptorPollResult::try_from(&buffer[..]);
-        assert_eq!(
-            result,
-            Err(CoinAcceptorPollResultError::TooManyEvents),
-            "should error on >5 events"
-        );
+    fn event_lost() {
+        let buffer = [6u8, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5]; // One event lost
+        let result = CoinAcceptorPollResult::try_from((&buffer[..], 0)).unwrap();
+        assert_eq!(result.lost_events, 1, "one event should be lost");
+        assert_eq!(result.event_counter, 6, "event counter should be 6");
+        assert_eq!(result.events.len(), 5, "should have 5 events");
     }
 
     #[test]
     fn error_on_unexpected_len() {
-        let buffer = [3u8, 1, 2, 3, 4]; // We expect 3 events, but only 4 bytes provided
-        let result = CoinAcceptorPollResult::try_from(&buffer[..]);
+        let buffer = [3u8, 1, 1, 2, 2]; // We expect 3 events, but only 4 bytes provided
+        let result = CoinAcceptorPollResult::try_from((&buffer[..], 0));
         assert_eq!(
             result,
             Err(CoinAcceptorPollResultError::NotEnoughEvents),
@@ -164,7 +192,7 @@ mod test {
     fn parse_events() {
         let buffer = [3u8, 1, 2, 3, 4, 5, 6]; // We expect 3 events
         let result =
-            CoinAcceptorPollResult::try_from(&buffer[..]).expect("should parse three events");
+            CoinAcceptorPollResult::try_from((&buffer[..], 0)).expect("should parse three events");
 
         assert_eq!(result.event_counter, 3);
         assert_eq!(result.events.len(), 3);

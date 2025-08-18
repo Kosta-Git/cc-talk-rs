@@ -11,11 +11,16 @@ use super::base::{CommandError, DeviceCommon, DeviceResult};
 pub struct CoinValidator {
     pub device: Device,
     pub sender: mpsc::Sender<TransportMessage>,
+    pub event_counter: u8,
 }
 
 impl CoinValidator {
     pub fn new(device: Device, sender: mpsc::Sender<TransportMessage>) -> Self {
-        CoinValidator { device, sender }
+        CoinValidator {
+            device,
+            sender,
+            event_counter: 0,
+        }
     }
 
     pub async fn set_master_inhibit(&self, inhibit: bool) -> DeviceResult<()> {
@@ -137,14 +142,16 @@ impl CoinValidator {
             .map_err(CommandError::from)
     }
 
-    pub async fn poll(&self) -> DeviceResult<CoinAcceptorPollResult> {
-        // TODO: Add lost event support
+    pub async fn poll(&mut self) -> DeviceResult<CoinAcceptorPollResult> {
         let response_packet = self
-            .send_command(ReadBufferedCreditOrErrorCodeCommand)
+            .send_command(ReadBufferedCreditOrErrorCodeCommand::default())
             .await?;
-        ReadBufferedCreditOrErrorCodeCommand
+        ReadBufferedCreditOrErrorCodeCommand::new(self.event_counter)
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)
+            .inspect(|result| {
+                self.event_counter = result.event_counter;
+            })
     }
 
     pub async fn request_coin_id(&self, coin_position: u8) -> DeviceResult<CurrencyToken> {

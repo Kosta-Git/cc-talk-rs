@@ -431,8 +431,15 @@ impl<const N: usize> Command for RequestInhibitStatusCommand<N> {
     }
 }
 
-#[derive(Debug)]
-pub struct ReadBufferedCreditOrErrorCodeCommand;
+#[derive(Debug, Default)]
+pub struct ReadBufferedCreditOrErrorCodeCommand {
+    last_event_counter: u8,
+}
+impl ReadBufferedCreditOrErrorCodeCommand {
+    pub fn new(last_event_counter: u8) -> Self {
+        ReadBufferedCreditOrErrorCodeCommand { last_event_counter }
+    }
+}
 impl Command for ReadBufferedCreditOrErrorCodeCommand {
     type Response = CoinAcceptorPollResult;
 
@@ -448,8 +455,7 @@ impl Command for ReadBufferedCreditOrErrorCodeCommand {
         if payload.is_empty() {
             return Err(ParseResponseError::DataLengthMismatch(1, payload.len()));
         }
-
-        CoinAcceptorPollResult::try_from(payload)
+        CoinAcceptorPollResult::try_from((payload, self.last_event_counter))
             .map_err(|_| ParseResponseError::ParseError("Invalid coin acceptor poll result"))
     }
 }
@@ -2284,8 +2290,15 @@ impl Command for RequestCipherKeyCommand {
     }
 }
 
-#[derive(Debug)]
-pub struct ReadBufferedBillEventsCommand;
+#[derive(Debug, Default)]
+pub struct ReadBufferedBillEventsCommand {
+    last_event_counter: u8,
+}
+impl ReadBufferedBillEventsCommand {
+    pub fn new(last_event_counter: u8) -> Self {
+        ReadBufferedBillEventsCommand { last_event_counter }
+    }
+}
 impl Command for ReadBufferedBillEventsCommand {
     type Response = BillValidatorPollResult;
 

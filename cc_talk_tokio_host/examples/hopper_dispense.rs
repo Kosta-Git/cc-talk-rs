@@ -61,7 +61,7 @@ async fn main() {
     }
 
     let _ = hopper.enable_hopper().await;
-    let _ = hopper.payout_serial_number(30).await;
+    let _ = hopper.payout_serial_number(3).await;
 
     let _ = tokio::spawn(async move {
         let mut remaining = u8::MAX;
