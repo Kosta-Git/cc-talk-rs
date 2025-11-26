@@ -30,7 +30,7 @@ pub enum HopperCommands {
         repeat: u8,
 
         /// Which payout mechanism to use
-        #[arg(short = 't', long, default_value = "SerialNumber")]
+        #[arg(short = 't', long, default_value = "serial-number")]
         payout_type: PayoutType,
 
         /// Interval between polls in milliseconds
