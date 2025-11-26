@@ -127,56 +127,58 @@ impl CcTalkTokioTransport {
             }
         };
 
-        loop {
-            if let Some(transport_message) = self.receiver.recv().await {
-                trace!(
-                    "received message for {}, header: {}",
-                    transport_message.address, transport_message.header as u8
-                );
+        while let Some(transport_message) = self.receiver.recv().await {
+            trace!(
+                "received message for {}, header: {}",
+                transport_message.address, transport_message.header as u8
+            );
 
-                let mut retry_instance = self.retry_config.create_retry_instance();
-                let mut response_data: Option<Vec<u8>> = None;
-                let message = Message::from(&transport_message);
-                while retry_instance.can_retry() {
-                    match handle_message(
-                        &message,
-                        &mut self.send_buffer,
-                        &mut self.receive_buffer,
-                        self.timeout,
-                        &mut socket,
-                        self.echo,
-                    )
-                    .await
-                    {
-                        Ok(data) => {
-                            response_data = Some(data);
-                            break;
-                        }
-                        Err((error_code, error_message)) => {
-                            error!("{} handling message. Info: {}", error_code, error_message);
-                            retry_instance.evaluate_and_wait(error_code).await;
-                        }
+            let mut retry_instance = self.retry_config.create_retry_instance();
+            let mut response_data: Option<Vec<u8>> = None;
+            let message = Message::from(&transport_message);
+            while retry_instance.can_retry() {
+                match handle_message(
+                    &message,
+                    &mut self.send_buffer,
+                    &mut self.receive_buffer,
+                    self.timeout,
+                    &mut socket,
+                    self.echo,
+                )
+                .await
+                {
+                    Ok(data) => {
+                        response_data = Some(data);
+                        break;
+                    }
+                    Err((error_code, error_message)) => {
+                        error!("{} handling message. Info: {}", error_code, error_message);
+                        retry_instance.evaluate_and_wait(error_code).await;
                     }
                 }
+            }
 
-                if let Some(data) = response_data {
-                    transport_message.respond_to.send(Ok(data)).ok();
-                } else {
-                    error!(
-                        "too many retries for message to {}, header: {}",
-                        transport_message.address, transport_message.header as u8
-                    );
-                    transport_message
-                        .respond_to
-                        .send(Err(retry_instance.last_error()))
-                        .ok();
-                }
+            if let Some(data) = response_data {
+                transport_message.respond_to.send(Ok(data)).ok();
+            } else {
+                error!(
+                    "too many retries for message to {}, header: {}",
+                    transport_message.address, transport_message.header as u8
+                );
+                transport_message
+                    .respond_to
+                    .send(Err(retry_instance.last_error()))
+                    .ok();
+            }
 
-                if !self.minimum_delay.is_zero() {
-                    tokio::time::sleep(self.minimum_delay).await;
-                }
+            if !self.minimum_delay.is_zero() {
+                tokio::time::sleep(self.minimum_delay).await;
             }
         }
+
+        socket.flush().await?;
+        socket.shutdown().await?;
+        Ok(())
     }
 }
 

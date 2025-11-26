@@ -21,8 +21,6 @@ async fn main() {
     let cli = Cli::parse();
     let timeout = Duration::from_millis(cli.timeout);
 
-    info!("{:#?}", cli);
-
     let (tx, rx) = mpsc::channel(8);
     let transport = CcTalkTokioTransport::new(
         rx,
@@ -38,14 +36,17 @@ async fn main() {
         cli.sock, cli.timeout, !cli.no_echo
     );
 
-    tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         if let Err(e) = transport.run().await {
             tracing::error!("Error running transport: {}", e);
         }
     });
     tokio::time::sleep(timeout).await;
-
-    match &cli.command {
-        Hopper { address, action } => hopper::handler(tx, *address, action).await,
+    {
+        match &cli.command {
+            Hopper { address, action } => hopper::handler(tx, *address, action).await,
+        }
+        handle.abort();
     }
+    tokio::time::sleep(Duration::from_millis(100)).await;
 }

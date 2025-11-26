@@ -13,5 +13,5 @@ DEVICE=/dev/ttyUSB0
 socat -d1 -x -v $DEVICE,clocal=1,nonblock=1,b9600,cs8,rawer,start=1,stop=1,parenb=0 UNIX-LISTEN:/tmp/cctalk.sock,fork,ignoreeof
 
 # MacOs
-socat -d2 -x -v $DEVICE,clocal=1,nonblock=1,ispeed=9600,ospeed=9600,cs8,rawer,echo=0 UNIX-LISTEN:/tmp/cctalk.sock,fork,ignoreeof
+socat -d2 -x -v $DEVICE,clocal=1,nonblock=1,ispeed=9600,ospeed=9600,cs8,rawer,echo=0 UNIX-LISTEN:/tmp/cctalk.sock,fork
 ```
