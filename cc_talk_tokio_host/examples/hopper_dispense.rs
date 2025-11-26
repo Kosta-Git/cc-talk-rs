@@ -55,32 +55,30 @@ async fn main() {
 
     info!("Product Code: {}", product_code);
 
-    if product_code == "WHM 100.C" {
-        // At 100% speed the WHM 100.C is like a gun shot :)
-        let _ = hopper.whm_100_speed_adjust(true, 0).await; // 0 is 30%, 7 is 100%
-    }
+    info!(
+        "manufacturer: {}",
+        hopper.get_manufacturer_id().await.unwrap()
+    );
+    info!("serial: {}", hopper.get_serial_number().await.unwrap());
 
     let _ = hopper.enable_hopper().await;
     let _ = hopper.payout_serial_number(3).await;
 
-    let _ = tokio::spawn(async move {
-        let mut remaining = u8::MAX;
+    let mut remaining = u8::MAX;
 
-        while remaining > 0 {
-            match hopper.get_payout_status().await {
-                Ok(status) => {
-                    info!("Hopper Status: {}", status);
-                    remaining = status.coins_remaining;
-                }
-                Err(e) => {
-                    error!("Error getting payout status: {}", e);
-                }
+    while remaining > 0 {
+        match hopper.get_payout_status().await {
+            Ok(status) => {
+                info!("Hopper Status: {}", status);
+                remaining = status.coins_remaining;
             }
-            tokio::time::sleep(Duration::from_millis(1000)).await;
+            Err(e) => {
+                error!("Error getting payout status: {}", e);
+            }
         }
-        let _ = hopper.disable_hopper().await;
-    })
-    .await;
+        tokio::time::sleep(Duration::from_millis(1000)).await;
+    }
+    let _ = hopper.disable_hopper().await;
 
     tokio::time::sleep(Duration::from_secs(2)).await;
 }
