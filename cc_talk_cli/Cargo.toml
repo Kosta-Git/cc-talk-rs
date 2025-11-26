@@ -19,7 +19,7 @@ cc_talk_host = { version = "0.0.2", path = "../cc_talk_host", features = [
   "std",
 ] }
 
-cc_talk_tokio_host = { version = "0.0.2", path = "../cc_talk_tokio_host" }
+cc_talk_tokio_host = { version = "0.0.3", path = "../cc_talk_tokio_host" }
 
 tokio = { version = "1.48.0", features = ["full"] }
 tracing = { version = "0.1.41" }

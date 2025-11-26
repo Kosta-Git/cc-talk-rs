@@ -125,7 +125,7 @@ dependencies = [
 
 [[package]]
 name = "cc_talk_tokio_host"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "cc_talk_core",
  "cc_talk_host",
