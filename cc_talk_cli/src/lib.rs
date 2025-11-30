@@ -2,7 +2,9 @@ use clap::{Parser, Subcommand};
 
 use crate::hopper::HopperCommands;
 
+pub mod coinselector;
 pub mod hopper;
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
@@ -29,5 +31,12 @@ pub enum Commands {
 
         #[command(subcommand)]
         action: HopperCommands,
+    },
+
+    Selector {
+        address: u8,
+
+        #[command(subcommand)]
+        action: coinselector::CoinSelectorCommands,
     },
 }

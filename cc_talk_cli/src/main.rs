@@ -1,6 +1,10 @@
 use std::time::Duration;
 
-use cc_talk_cli::{Cli, Commands::Hopper, hopper};
+use cc_talk_cli::{
+    Cli,
+    Commands::{Hopper, Selector},
+    coinselector, hopper,
+};
 use cc_talk_tokio_host::transport::{retry::RetryConfig, tokio_transport::CcTalkTokioTransport};
 use clap::Parser;
 use tokio::sync::mpsc;
@@ -45,6 +49,7 @@ async fn main() {
     {
         match &cli.command {
             Hopper { address, action } => hopper::handler(tx, *address, action).await,
+            Selector { address, action } => coinselector::handler(tx, *address, action).await,
         }
         handle.abort();
     }
