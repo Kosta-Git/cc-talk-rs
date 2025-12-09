@@ -97,7 +97,7 @@ dependencies = [
 
 [[package]]
 name = "cc_talk_core"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "defmt",
  "heapless",
