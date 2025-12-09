@@ -30,6 +30,7 @@ pub struct PollingPriority {
     pub unit: PollingUnit,
     pub value: u8,
 }
+
 #[cfg(feature = "std")]
 impl PollingPriority {
     pub fn as_duration(&self) -> Option<std::time::Duration> {
@@ -54,6 +55,7 @@ impl PollingPriority {
         Some(duration)
     }
 }
+
 #[derive(Debug)]
 pub struct RequestPollingPriorityCommand;
 impl Command for RequestPollingPriorityCommand {
@@ -105,6 +107,7 @@ pub enum CoinAcceptorStatus {
     CoinReturnMechanismActivated = 1,
     CoinOnString = 2,
 }
+
 #[derive(Debug)]
 pub struct RequestStatusCommand;
 impl Command for RequestStatusCommand {

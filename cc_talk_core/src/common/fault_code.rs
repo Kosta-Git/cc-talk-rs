@@ -353,26 +353,27 @@ impl FaultCode {
     ///
     /// Some fault codes support an additional byte of information to provide
     /// more specific details about the fault (e.g., which sensor failed).
-    pub fn has_optional_info(&self) -> bool {
+    #[must_use]
+    pub const fn has_optional_info(&self) -> bool {
         matches!(
             self,
-            FaultCode::InductiveCoilsFault
-                | FaultCode::SorterExitSensorsFault
-                | FaultCode::LowLevelSensorError
-                | FaultCode::HighLevelSensorError
-                | FaultCode::KeypadError
-                | FaultCode::PayoutMotorFault
-                | FaultCode::PayoutTimeout
-                | FaultCode::PayoutJammed
-                | FaultCode::PayoutSensorFault
-                | FaultCode::LevelSensorError
-                | FaultCode::MissingSlaveDevice
-                | FaultCode::InternalCommsBad
-                | FaultCode::DceFault
-                | FaultCode::BillValidationSensorFault
-                | FaultCode::SlaveDeviceNotResponding
-                | FaultCode::OptoSensorFault
-                | FaultCode::UnspecifiedFault
+            Self::InductiveCoilsFault
+                | Self::SorterExitSensorsFault
+                | Self::LowLevelSensorError
+                | Self::HighLevelSensorError
+                | Self::KeypadError
+                | Self::PayoutMotorFault
+                | Self::PayoutTimeout
+                | Self::PayoutJammed
+                | Self::PayoutSensorFault
+                | Self::LevelSensorError
+                | Self::MissingSlaveDevice
+                | Self::InternalCommsBad
+                | Self::DceFault
+                | Self::BillValidationSensorFault
+                | Self::SlaveDeviceNotResponding
+                | Self::OptoSensorFault
+                | Self::UnspecifiedFault
         )
     }
 
@@ -380,28 +381,31 @@ impl FaultCode {
     ///
     /// Obsolete fault codes were incorporated into the 'Test hopper' command
     /// in a past revision of the protocol.
-    pub fn is_obsolete(&self) -> bool {
+    #[must_use]
+    pub const fn is_obsolete(&self) -> bool {
         matches!(
             self,
-            FaultCode::CoinDispensingError
-                | FaultCode::LowLevelSensorError
-                | FaultCode::HighLevelSensorError
-                | FaultCode::CoinCountingError
-                | FaultCode::PayoutTimeout
-                | FaultCode::PayoutJammed
-                | FaultCode::MissingSlaveDevice
+            Self::CoinDispensingError
+                | Self::LowLevelSensorError
+                | Self::HighLevelSensorError
+                | Self::CoinCountingError
+                | Self::PayoutTimeout
+                | Self::PayoutJammed
+                | Self::MissingSlaveDevice
         )
     }
 
     /// Returns true if this fault code indicates normal operation (no fault)
-    pub fn is_ok(&self) -> bool {
-        matches!(self, FaultCode::Ok)
+    #[must_use]
+    pub const fn is_ok(&self) -> bool {
+        matches!(self, Self::Ok)
     }
 
     /// Returns true if this fault code indicates a fatal error requiring service
     ///
     /// All non-zero fault codes are considered fatal and prevent normal operation.
-    pub fn is_fatal(&self) -> bool {
+    #[must_use]
+    pub const fn is_fatal(&self) -> bool {
         !self.is_ok()
     }
 }
@@ -411,65 +415,65 @@ impl TryFrom<u8> for FaultCode {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(FaultCode::Ok),
-            1 => Ok(FaultCode::EepromChecksumCorrupted),
-            2 => Ok(FaultCode::InductiveCoilsFault),
-            3 => Ok(FaultCode::CreditSensorFault),
-            4 => Ok(FaultCode::PiezoSensorFault),
-            5 => Ok(FaultCode::ReflectiveSensorFault),
-            6 => Ok(FaultCode::DiameterSensorFault),
-            7 => Ok(FaultCode::WakeUpSensorFault),
-            8 => Ok(FaultCode::SorterExitSensorsFault),
-            9 => Ok(FaultCode::NvramChecksumCorrupted),
-            10 => Ok(FaultCode::CoinDispensingError),
-            11 => Ok(FaultCode::LowLevelSensorError),
-            12 => Ok(FaultCode::HighLevelSensorError),
-            13 => Ok(FaultCode::CoinCountingError),
-            14 => Ok(FaultCode::KeypadError),
-            15 => Ok(FaultCode::ButtonError),
-            16 => Ok(FaultCode::DisplayError),
-            17 => Ok(FaultCode::CoinAuditingError),
-            18 => Ok(FaultCode::RejectSensorFault),
-            19 => Ok(FaultCode::CoinReturnMechanismFault),
-            20 => Ok(FaultCode::CosMechanismFault),
-            21 => Ok(FaultCode::RimSensorFault),
-            22 => Ok(FaultCode::ThermistorFault),
-            23 => Ok(FaultCode::PayoutMotorFault),
-            24 => Ok(FaultCode::PayoutTimeout),
-            25 => Ok(FaultCode::PayoutJammed),
-            26 => Ok(FaultCode::PayoutSensorFault),
-            27 => Ok(FaultCode::LevelSensorError),
-            28 => Ok(FaultCode::PersonalityModuleNotFitted),
-            29 => Ok(FaultCode::PersonalityChecksumCorrupted),
-            30 => Ok(FaultCode::RomChecksumMismatch),
-            31 => Ok(FaultCode::MissingSlaveDevice),
-            32 => Ok(FaultCode::InternalCommsBad),
-            33 => Ok(FaultCode::SupplyVoltageOutsideLimits),
-            34 => Ok(FaultCode::TemperatureOutsideLimits),
-            35 => Ok(FaultCode::DceFault),
-            36 => Ok(FaultCode::BillValidationSensorFault),
-            37 => Ok(FaultCode::BillTransportMotorFault),
-            38 => Ok(FaultCode::StackerFault),
-            39 => Ok(FaultCode::BillJammed),
-            40 => Ok(FaultCode::RamTestFail),
-            41 => Ok(FaultCode::StringSensorFault),
-            42 => Ok(FaultCode::AcceptGateFailedOpen),
-            43 => Ok(FaultCode::AcceptGateFailedClosed),
-            44 => Ok(FaultCode::StackerMissing),
-            45 => Ok(FaultCode::StackerFull),
-            46 => Ok(FaultCode::FlashMemoryEraseFail),
-            47 => Ok(FaultCode::FlashMemoryWriteFail),
-            48 => Ok(FaultCode::SlaveDeviceNotResponding),
-            49 => Ok(FaultCode::OptoSensorFault),
-            50 => Ok(FaultCode::BatteryFault),
-            51 => Ok(FaultCode::DoorOpen),
-            52 => Ok(FaultCode::MicroswitchFault),
-            53 => Ok(FaultCode::RtcFault),
-            54 => Ok(FaultCode::FirmwareError),
-            55 => Ok(FaultCode::InitialisationError),
-            56 => Ok(FaultCode::SupplyCurrentOutsideLimits),
-            57 => Ok(FaultCode::ForcedBootloaderMode),
-            255 => Ok(FaultCode::UnspecifiedFault),
+            0 => Ok(Self::Ok),
+            1 => Ok(Self::EepromChecksumCorrupted),
+            2 => Ok(Self::InductiveCoilsFault),
+            3 => Ok(Self::CreditSensorFault),
+            4 => Ok(Self::PiezoSensorFault),
+            5 => Ok(Self::ReflectiveSensorFault),
+            6 => Ok(Self::DiameterSensorFault),
+            7 => Ok(Self::WakeUpSensorFault),
+            8 => Ok(Self::SorterExitSensorsFault),
+            9 => Ok(Self::NvramChecksumCorrupted),
+            10 => Ok(Self::CoinDispensingError),
+            11 => Ok(Self::LowLevelSensorError),
+            12 => Ok(Self::HighLevelSensorError),
+            13 => Ok(Self::CoinCountingError),
+            14 => Ok(Self::KeypadError),
+            15 => Ok(Self::ButtonError),
+            16 => Ok(Self::DisplayError),
+            17 => Ok(Self::CoinAuditingError),
+            18 => Ok(Self::RejectSensorFault),
+            19 => Ok(Self::CoinReturnMechanismFault),
+            20 => Ok(Self::CosMechanismFault),
+            21 => Ok(Self::RimSensorFault),
+            22 => Ok(Self::ThermistorFault),
+            23 => Ok(Self::PayoutMotorFault),
+            24 => Ok(Self::PayoutTimeout),
+            25 => Ok(Self::PayoutJammed),
+            26 => Ok(Self::PayoutSensorFault),
+            27 => Ok(Self::LevelSensorError),
+            28 => Ok(Self::PersonalityModuleNotFitted),
+            29 => Ok(Self::PersonalityChecksumCorrupted),
+            30 => Ok(Self::RomChecksumMismatch),
+            31 => Ok(Self::MissingSlaveDevice),
+            32 => Ok(Self::InternalCommsBad),
+            33 => Ok(Self::SupplyVoltageOutsideLimits),
+            34 => Ok(Self::TemperatureOutsideLimits),
+            35 => Ok(Self::DceFault),
+            36 => Ok(Self::BillValidationSensorFault),
+            37 => Ok(Self::BillTransportMotorFault),
+            38 => Ok(Self::StackerFault),
+            39 => Ok(Self::BillJammed),
+            40 => Ok(Self::RamTestFail),
+            41 => Ok(Self::StringSensorFault),
+            42 => Ok(Self::AcceptGateFailedOpen),
+            43 => Ok(Self::AcceptGateFailedClosed),
+            44 => Ok(Self::StackerMissing),
+            45 => Ok(Self::StackerFull),
+            46 => Ok(Self::FlashMemoryEraseFail),
+            47 => Ok(Self::FlashMemoryWriteFail),
+            48 => Ok(Self::SlaveDeviceNotResponding),
+            49 => Ok(Self::OptoSensorFault),
+            50 => Ok(Self::BatteryFault),
+            51 => Ok(Self::DoorOpen),
+            52 => Ok(Self::MicroswitchFault),
+            53 => Ok(Self::RtcFault),
+            54 => Ok(Self::FirmwareError),
+            55 => Ok(Self::InitialisationError),
+            56 => Ok(Self::SupplyCurrentOutsideLimits),
+            57 => Ok(Self::ForcedBootloaderMode),
+            255 => Ok(Self::UnspecifiedFault),
             _ => Err(InvalidFaultCode(value)),
         }
     }
@@ -477,7 +481,7 @@ impl TryFrom<u8> for FaultCode {
 
 impl From<FaultCode> for u8 {
     fn from(fault: FaultCode) -> Self {
-        fault as u8
+        fault as Self
     }
 }
 
@@ -508,7 +512,8 @@ pub struct Fault {
 
 impl Fault {
     /// Creates a new fault with no extra information
-    pub fn new(code: FaultCode) -> Self {
+    #[must_use]
+    pub const fn new(code: FaultCode) -> Self {
         Self {
             code,
             extra_info: None,
@@ -521,11 +526,11 @@ impl Fault {
     ///
     /// Panics if the fault code doesn't support optional extra information.
     /// Use `try_with_info` for a non-panicking version.
+    #[must_use]
     pub fn with_info(code: FaultCode, info: u8) -> Self {
         assert!(
             code.has_optional_info(),
-            "Fault code {:?} does not support optional extra information",
-            code
+            "Fault code {code:?} does not support optional extra information",
         );
         Self {
             code,
@@ -535,8 +540,10 @@ impl Fault {
 
     /// Attempts to create a new fault with extra information
     ///
+    /// # Errors
+    ///
     /// Returns `Err` if the fault code doesn't support optional extra information.
-    pub fn try_with_info(code: FaultCode, info: u8) -> Result<Self, &'static str> {
+    pub const fn try_with_info(code: FaultCode, info: u8) -> Result<Self, &'static str> {
         if code.has_optional_info() {
             Ok(Self {
                 code,
@@ -548,12 +555,14 @@ impl Fault {
     }
 
     /// Returns true if this fault indicates normal operation
-    pub fn is_ok(&self) -> bool {
+    #[must_use]
+    pub const fn is_ok(&self) -> bool {
         self.code.is_ok()
     }
 
     /// Returns true if this fault indicates a fatal error requiring service
-    pub fn is_fatal(&self) -> bool {
+    #[must_use]
+    pub const fn is_fatal(&self) -> bool {
         self.code.is_fatal()
     }
 }

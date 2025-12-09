@@ -1,5 +1,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[allow(clippy::struct_excessive_bools)]
+// TODO: refactor this into enums
 pub struct HopperStatus {
     pub low_level_supported: bool,
     /// True => higher or equal to low level
@@ -36,16 +38,17 @@ impl core::fmt::Display for HopperStatus {
 
         write!(
             f,
-            "📊 Hopper Level Status\n\
-            ┌─ 🔻 Low Level: {}\n\
-            └─ 🔺 High Level: {}",
-            low_status, high_status
+            " Hopper Level Status\n\
+            ┌─  Low Level: {low_status}\n\
+            └─  High Level: {high_status}"
         )
     }
 }
 
 impl HopperStatus {
-    pub fn new(
+    #[must_use]
+    #[allow(clippy::fn_params_excessive_bools)]
+    pub const fn new(
         low_level_supported: bool,
         higher_than_low_level: bool,
         high_level_supported: bool,
@@ -115,7 +118,8 @@ impl core::fmt::Display for HopperDispenseStatus {
 }
 
 impl HopperDispenseStatus {
-    pub fn new(event_counter: u8, coins_remaining: u8, paid: u8, unpaid: u8) -> Self {
+    #[must_use]
+    pub const fn new(event_counter: u8, coins_remaining: u8, paid: u8, unpaid: u8) -> Self {
         Self {
             event_counter,
             coins_remaining,
@@ -124,15 +128,17 @@ impl HopperDispenseStatus {
         }
     }
 
-    pub fn next_event_counter(&self) -> u8 {
+    #[must_use]
+    pub const fn next_event_counter(&self) -> u8 {
         match self.event_counter {
             u8::MAX => 1, // 0 should only be used on reset.
             _ => self.event_counter + 1,
         }
     }
 
-    pub fn payout_requested(&self, coin_count: u8) -> HopperDispenseStatus {
-        HopperDispenseStatus {
+    #[must_use]
+    pub const fn payout_requested(&self, coin_count: u8) -> Self {
+        Self {
             event_counter: self.next_event_counter(),
             coins_remaining: self.coins_remaining.saturating_add(coin_count),
             paid: 0,
@@ -140,8 +146,9 @@ impl HopperDispenseStatus {
         }
     }
 
-    pub fn coin_paid(&self, coin_count: u8) -> HopperDispenseStatus {
-        HopperDispenseStatus {
+    #[must_use]
+    pub const fn coin_paid(&self, coin_count: u8) -> Self {
+        Self {
             event_counter: self.next_event_counter(),
             coins_remaining: self.coins_remaining.saturating_sub(coin_count),
             paid: self.paid.saturating_add(coin_count),
@@ -149,8 +156,9 @@ impl HopperDispenseStatus {
         }
     }
 
-    pub fn coin_unpaid(&self, coin_count: u8) -> HopperDispenseStatus {
-        HopperDispenseStatus {
+    #[must_use]
+    pub const fn coin_unpaid(&self, coin_count: u8) -> Self {
+        Self {
             event_counter: self.next_event_counter(),
             coins_remaining: self.coins_remaining.saturating_sub(coin_count),
             paid: self.paid,
@@ -191,7 +199,8 @@ pub struct HopperDispenseValueStatus {
 }
 
 impl HopperDispenseValueStatus {
-    pub fn new(event_counter: u8, remaining: u16, paid: u16, unpaid: u16) -> Self {
+    #[must_use]
+    pub const fn new(event_counter: u8, remaining: u16, paid: u16, unpaid: u16) -> Self {
         Self {
             event_counter,
             value_remaining: remaining,
@@ -200,15 +209,17 @@ impl HopperDispenseValueStatus {
         }
     }
 
-    pub fn next_event_counter(&self) -> u8 {
+    #[must_use]
+    pub const fn next_event_counter(&self) -> u8 {
         match self.event_counter {
             u8::MAX => 1, // 0 should only be used on reset.
             _ => self.event_counter + 1,
         }
     }
 
-    pub fn payout_requested(&self, value: u16) -> HopperDispenseValueStatus {
-        HopperDispenseValueStatus {
+    #[must_use]
+    pub const fn payout_requested(&self, value: u16) -> Self {
+        Self {
             event_counter: self.next_event_counter(),
             value_remaining: self.value_remaining.saturating_add(value),
             paid: 0,
@@ -216,8 +227,9 @@ impl HopperDispenseValueStatus {
         }
     }
 
-    pub fn paid(&self, value: u16) -> HopperDispenseValueStatus {
-        HopperDispenseValueStatus {
+    #[must_use]
+    pub const fn paid(&self, value: u16) -> Self {
+        Self {
             event_counter: self.next_event_counter(),
             value_remaining: self.value_remaining.saturating_sub(value),
             paid: self.paid.saturating_add(value),
@@ -225,8 +237,9 @@ impl HopperDispenseValueStatus {
         }
     }
 
-    pub fn unpaid(&self, value: u16) -> HopperDispenseValueStatus {
-        HopperDispenseValueStatus {
+    #[must_use]
+    pub const fn unpaid(&self, value: u16) -> Self {
+        Self {
             event_counter: self.next_event_counter(),
             value_remaining: self.value_remaining.saturating_sub(value),
             paid: self.paid,

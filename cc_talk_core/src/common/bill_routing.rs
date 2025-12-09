@@ -12,9 +12,9 @@ impl TryFrom<u8> for BillRouteCode {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(BillRouteCode::Return),
-            1 => Ok(BillRouteCode::Stack),
-            255 => Ok(BillRouteCode::ExtendEscrow),
+            0 => Ok(Self::Return),
+            1 => Ok(Self::Stack),
+            255 => Ok(Self::ExtendEscrow),
             _ => Err(()),
         }
     }
@@ -33,8 +33,8 @@ impl TryFrom<u8> for BillRoutingError {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            254 => Ok(BillRoutingError::EscrowEmpty),
-            255 => Ok(BillRoutingError::FailedToRoute),
+            254 => Ok(Self::EscrowEmpty),
+            255 => Ok(Self::FailedToRoute),
             _ => Err(()),
         }
     }
@@ -53,8 +53,8 @@ impl TryFrom<u8> for StackerCycleError {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            254 => Ok(StackerCycleError::StackerFault),
-            255 => Ok(StackerCycleError::StackerNotFitted),
+            254 => Ok(Self::StackerFault),
+            255 => Ok(Self::StackerNotFitted),
             _ => Err(()),
         }
     }

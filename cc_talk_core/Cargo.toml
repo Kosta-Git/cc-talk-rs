@@ -1,6 +1,6 @@
 [package]
 name = "cc_talk_core"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 license = "GPL-3.0-or-later"
 authors = ["Kosta S. <github.operation464@simplelogin.com>"]
@@ -9,6 +9,11 @@ keywords = ["no-std", "ccTalk", "protocol"]
 repository = "https://github.com/Kosta-Git/cc-talk-rs/"
 readme = "../README.md"
 exclude = [".gitignore"]
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+unwrap_used = "deny"
 
 [features]
 default = []

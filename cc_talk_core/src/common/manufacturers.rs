@@ -15,10 +15,10 @@ pub enum Manufacturer {
     /// Alberici (ALB)
     Alberici,
 
-    /// AlfaNet informatika d.o.o (ANI)
+    /// `AlfaNet` informatika d.o.o (ANI)
     AlfaNetInformatika,
 
-    /// AstroSystems Ltd (AST)
+    /// `AstroSystems` Ltd (AST)
     AstroSystems,
 
     /// Azkoyen (AZK)
@@ -27,7 +27,7 @@ pub enum Manufacturer {
     /// Comestero Group (CMG)
     ComesteroGroup,
 
-    /// Crane CashCode Company (CCC)
+    /// Crane `CashCode` Company (CCC)
     CraneCashCodeCompany,
 
     /// Crane Payment Solutions (CPS)
@@ -99,110 +99,112 @@ pub enum Manufacturer {
 
 impl Manufacturer {
     /// Returns the full company name
+    #[must_use]
     pub const fn full_name(&self) -> &'static str {
         match self {
-            Manufacturer::AardvarkEmbeddedSolutions => "Aardvark Embedded Solutions Ltd",
-            Manufacturer::Alberici => "Alberici",
-            Manufacturer::AlfaNetInformatika => "AlfaNet informatika d.o.o",
-            Manufacturer::AstroSystems => "AstroSystems Ltd",
-            Manufacturer::Azkoyen => "Azkoyen",
-            Manufacturer::ComesteroGroup => "Comestero Group",
-            Manufacturer::CraneCashCodeCompany => "Crane CashCode Company",
-            Manufacturer::CranePaymentSolutions => "Crane Payment Solutions",
-            Manufacturer::Encopim => "Encopim SL",
-            Manufacturer::GamingTechnologyDistribution => "Gaming Technology Distribution",
-            Manufacturer::Himecs => "Himecs",
-            Manufacturer::IndustriasLorenzo => "Industrias Lorenzo",
-            Manufacturer::InnovativeTechnology => "Innovative Technology Ltd",
-            Manufacturer::IntegratedTechnology => "Intergrated Technology Ltd",
-            Manufacturer::InternationalCurrencyTechnologies => {
-                "International Currency Technologies"
-            }
-            Manufacturer::JapanCashMachine => "Japan Cash Machine",
-            Manufacturer::Jofemar => "Jofemar",
-            Manufacturer::Kuky => "Kuky",
-            Manufacturer::MarsElectronicsInternational => "Mars Electronics International",
-            Manufacturer::MicrosystemControls => "Microsystem Controls Pty. Ltd.",
-            Manufacturer::MoneyControlsInternational => "Money Controls (International)",
-            Manufacturer::NationalRejectorsInc => "National Rejectors Inc",
-            Manufacturer::PhoenixMecanoDigital => "Phoenix Mecano Digital",
-            Manufacturer::StarpointElectrics => "Starpoint Electrics Ltd",
-            Manufacturer::TelequipCrane => "Telequip / Crane",
-            Manufacturer::WeavefutureInc => "Weavefuture Inc",
-            Manufacturer::WHMunzprufer => "WH Münzprüfer",
-            Manufacturer::INOTEK => "iNOTEK",
+            Self::AardvarkEmbeddedSolutions => "Aardvark Embedded Solutions Ltd",
+            Self::Alberici => "Alberici",
+            Self::AlfaNetInformatika => "AlfaNet informatika d.o.o",
+            Self::AstroSystems => "AstroSystems Ltd",
+            Self::Azkoyen => "Azkoyen",
+            Self::ComesteroGroup => "Comestero Group",
+            Self::CraneCashCodeCompany => "Crane CashCode Company",
+            Self::CranePaymentSolutions => "Crane Payment Solutions",
+            Self::Encopim => "Encopim SL",
+            Self::GamingTechnologyDistribution => "Gaming Technology Distribution",
+            Self::Himecs => "Himecs",
+            Self::IndustriasLorenzo => "Industrias Lorenzo",
+            Self::InnovativeTechnology => "Innovative Technology Ltd",
+            Self::IntegratedTechnology => "Intergrated Technology Ltd",
+            Self::InternationalCurrencyTechnologies => "International Currency Technologies",
+            Self::JapanCashMachine => "Japan Cash Machine",
+            Self::Jofemar => "Jofemar",
+            Self::Kuky => "Kuky",
+            Self::MarsElectronicsInternational => "Mars Electronics International",
+            Self::MicrosystemControls => "Microsystem Controls Pty. Ltd.",
+            Self::MoneyControlsInternational => "Money Controls (International)",
+            Self::NationalRejectorsInc => "National Rejectors Inc",
+            Self::PhoenixMecanoDigital => "Phoenix Mecano Digital",
+            Self::StarpointElectrics => "Starpoint Electrics Ltd",
+            Self::TelequipCrane => "Telequip / Crane",
+            Self::WeavefutureInc => "Weavefuture Inc",
+            Self::WHMunzprufer => "WH Münzprüfer",
+            Self::INOTEK => "iNOTEK",
         }
     }
 
     /// Returns the abbreviated name (typically used by BNVs)
+    #[must_use]
     pub const fn abbreviated_name(&self) -> &'static str {
         match self {
-            Manufacturer::AardvarkEmbeddedSolutions => "AES",
-            Manufacturer::Alberici => "ALB",
-            Manufacturer::AlfaNetInformatika => "ANI",
-            Manufacturer::AstroSystems => "AST",
-            Manufacturer::Azkoyen => "AZK",
-            Manufacturer::ComesteroGroup => "CMG",
-            Manufacturer::CraneCashCodeCompany => "CCC",
-            Manufacturer::CranePaymentSolutions => "CPS",
-            Manufacturer::Encopim => "ECP",
-            Manufacturer::GamingTechnologyDistribution => "GTD",
-            Manufacturer::Himecs => "HIM",
-            Manufacturer::IndustriasLorenzo => "IL",
-            Manufacturer::InnovativeTechnology => "ITL",
-            Manufacturer::IntegratedTechnology => "INT",
-            Manufacturer::InternationalCurrencyTechnologies => "ICT",
-            Manufacturer::JapanCashMachine => "JCM",
-            Manufacturer::Jofemar => "JOF",
-            Manufacturer::Kuky => "KUK",
-            Manufacturer::MarsElectronicsInternational => "MEI",
-            Manufacturer::MicrosystemControls => "MSC",
-            Manufacturer::MoneyControlsInternational => "MCI",
-            Manufacturer::NationalRejectorsInc => "NRI",
-            Manufacturer::PhoenixMecanoDigital => "PMD",
-            Manufacturer::StarpointElectrics => "SEL",
-            Manufacturer::TelequipCrane => "TQP",
-            Manufacturer::WeavefutureInc => "WFT",
-            Manufacturer::WHMunzprufer => "WHM",
-            Manufacturer::INOTEK => "INK",
+            Self::AardvarkEmbeddedSolutions => "AES",
+            Self::Alberici => "ALB",
+            Self::AlfaNetInformatika => "ANI",
+            Self::AstroSystems => "AST",
+            Self::Azkoyen => "AZK",
+            Self::ComesteroGroup => "CMG",
+            Self::CraneCashCodeCompany => "CCC",
+            Self::CranePaymentSolutions => "CPS",
+            Self::Encopim => "ECP",
+            Self::GamingTechnologyDistribution => "GTD",
+            Self::Himecs => "HIM",
+            Self::IndustriasLorenzo => "IL",
+            Self::InnovativeTechnology => "ITL",
+            Self::IntegratedTechnology => "INT",
+            Self::InternationalCurrencyTechnologies => "ICT",
+            Self::JapanCashMachine => "JCM",
+            Self::Jofemar => "JOF",
+            Self::Kuky => "KUK",
+            Self::MarsElectronicsInternational => "MEI",
+            Self::MicrosystemControls => "MSC",
+            Self::MoneyControlsInternational => "MCI",
+            Self::NationalRejectorsInc => "NRI",
+            Self::PhoenixMecanoDigital => "PMD",
+            Self::StarpointElectrics => "SEL",
+            Self::TelequipCrane => "TQP",
+            Self::WeavefutureInc => "WFT",
+            Self::WHMunzprufer => "WHM",
+            Self::INOTEK => "INK",
         }
     }
 
     /// Returns all known manufacturers as a slice
-    pub const fn all() -> &'static [Manufacturer] {
+    #[must_use]
+    pub const fn all() -> &'static [Self] {
         &[
-            Manufacturer::AardvarkEmbeddedSolutions,
-            Manufacturer::Alberici,
-            Manufacturer::AlfaNetInformatika,
-            Manufacturer::AstroSystems,
-            Manufacturer::Azkoyen,
-            Manufacturer::ComesteroGroup,
-            Manufacturer::CraneCashCodeCompany,
-            Manufacturer::CranePaymentSolutions,
-            Manufacturer::Encopim,
-            Manufacturer::GamingTechnologyDistribution,
-            Manufacturer::Himecs,
-            Manufacturer::IndustriasLorenzo,
-            Manufacturer::InnovativeTechnology,
-            Manufacturer::IntegratedTechnology,
-            Manufacturer::InternationalCurrencyTechnologies,
-            Manufacturer::JapanCashMachine,
-            Manufacturer::Jofemar,
-            Manufacturer::Kuky,
-            Manufacturer::MarsElectronicsInternational,
-            Manufacturer::MicrosystemControls,
-            Manufacturer::MoneyControlsInternational,
-            Manufacturer::NationalRejectorsInc,
-            Manufacturer::PhoenixMecanoDigital,
-            Manufacturer::StarpointElectrics,
-            Manufacturer::TelequipCrane,
-            Manufacturer::WeavefutureInc,
-            Manufacturer::WHMunzprufer,
-            Manufacturer::INOTEK,
+            Self::AardvarkEmbeddedSolutions,
+            Self::Alberici,
+            Self::AlfaNetInformatika,
+            Self::AstroSystems,
+            Self::Azkoyen,
+            Self::ComesteroGroup,
+            Self::CraneCashCodeCompany,
+            Self::CranePaymentSolutions,
+            Self::Encopim,
+            Self::GamingTechnologyDistribution,
+            Self::Himecs,
+            Self::IndustriasLorenzo,
+            Self::InnovativeTechnology,
+            Self::IntegratedTechnology,
+            Self::InternationalCurrencyTechnologies,
+            Self::JapanCashMachine,
+            Self::Jofemar,
+            Self::Kuky,
+            Self::MarsElectronicsInternational,
+            Self::MicrosystemControls,
+            Self::MoneyControlsInternational,
+            Self::NationalRejectorsInc,
+            Self::PhoenixMecanoDigital,
+            Self::StarpointElectrics,
+            Self::TelequipCrane,
+            Self::WeavefutureInc,
+            Self::WHMunzprufer,
+            Self::INOTEK,
         ]
     }
 
     /// Attempts to parse a manufacturer from a full name string
+    #[must_use]
     pub fn from_full_name(name: &str) -> Option<Self> {
         Self::all()
             .iter()
@@ -211,6 +213,7 @@ impl Manufacturer {
     }
 
     /// Attempts to parse a manufacturer from an abbreviated name string
+    #[must_use]
     pub fn from_abbreviated_name(name: &str) -> Option<Self> {
         Self::all()
             .iter()
@@ -219,6 +222,7 @@ impl Manufacturer {
     }
 
     /// Attempts to parse a manufacturer from either full or abbreviated name
+    #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
         Self::from_full_name(name).or_else(|| Self::from_abbreviated_name(name))
     }
@@ -253,50 +257,55 @@ impl ManufacturerIdentifier {
     ///
     /// First attempts to match against known manufacturers (both full and abbreviated names),
     /// falling back to storing as an unknown manufacturer if no match is found.
+    #[must_use]
+    #[allow(clippy::option_if_let_else)] // For clarity in this context
     pub fn new(name: &str) -> Self {
         match Manufacturer::from_name(name) {
-            Some(manufacturer) => ManufacturerIdentifier::Known(manufacturer),
+            Some(manufacturer) => Self::Known(manufacturer),
             None => {
                 #[cfg(not(feature = "std"))]
                 {
                     match heapless::String::try_from(name) {
-                        Ok(unknown) => ManufacturerIdentifier::Unknown(unknown),
+                        Ok(unknown) => Self::Unknown(unknown),
                         Err(_) => {
                             // If the string is too long, truncate it
                             let truncated = &name[..name.len().min(64)];
                             let truncated_string = heapless::String::try_from(truncated)
                                 .unwrap_or_else(|_| heapless::String::new());
-                            ManufacturerIdentifier::Unknown(truncated_string)
+                            Self::Unknown(truncated_string)
                         }
                     }
                 }
                 #[cfg(feature = "std")]
                 {
                     use std::string::ToString;
-                    ManufacturerIdentifier::Unknown(name.to_string())
+                    Self::Unknown(name.to_string())
                 }
             }
         }
     }
 
     /// Returns the manufacturer name as a string
-    pub fn name(&self) -> &str {
+    #[must_use]
+    pub const fn name(&self) -> &str {
         match self {
-            ManufacturerIdentifier::Known(manufacturer) => manufacturer.full_name(),
-            ManufacturerIdentifier::Unknown(name) => name.as_str(),
+            Self::Known(manufacturer) => manufacturer.full_name(),
+            Self::Unknown(name) => name.as_str(),
         }
     }
 
     /// Returns true if this is a known/registered manufacturer
-    pub fn is_known(&self) -> bool {
-        matches!(self, ManufacturerIdentifier::Known(_))
+    #[must_use]
+    pub const fn is_known(&self) -> bool {
+        matches!(self, Self::Known(_))
     }
 
     /// Returns the known manufacturer if available
-    pub fn known_manufacturer(&self) -> Option<Manufacturer> {
+    #[must_use]
+    pub const fn known_manufacturer(&self) -> Option<Manufacturer> {
         match self {
-            ManufacturerIdentifier::Known(manufacturer) => Some(*manufacturer),
-            ManufacturerIdentifier::Unknown(_) => None,
+            Self::Known(manufacturer) => Some(*manufacturer),
+            Self::Unknown(_) => None,
         }
     }
 }
@@ -309,7 +318,7 @@ impl core::fmt::Display for ManufacturerIdentifier {
 
 impl From<Manufacturer> for ManufacturerIdentifier {
     fn from(manufacturer: Manufacturer) -> Self {
-        ManufacturerIdentifier::Known(manufacturer)
+        Self::Known(manufacturer)
     }
 }
 

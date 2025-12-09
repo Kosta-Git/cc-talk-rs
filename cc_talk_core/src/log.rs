@@ -223,12 +223,14 @@ impl<T, E> Try for Result<T, E> {
     }
 }
 
+#[allow(clippy::redundant_pub_crate)]
 pub(crate) struct Bytes<'a>(pub &'a [u8]);
 
 #[cfg(feature = "defmt")]
+#[allow(clippy::elidable_lifetime_names)]
 impl<'a> defmt::Format for Bytes<'a> {
     fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(fmt, "{:02x}", self.0)
+        defmt::write!(fmt, "{:02x}", self.0);
     }
 }
 

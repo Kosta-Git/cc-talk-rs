@@ -6,7 +6,8 @@ pub struct ChangerPollResult {
     pub unpaid: u32,
 }
 impl ChangerPollResult {
-    pub fn new(event_counter: u8, paid: u32, unpaid: u32) -> Self {
+    #[must_use]
+    pub const fn new(event_counter: u8, paid: u32, unpaid: u32) -> Self {
         Self {
             event_counter,
             paid,
@@ -14,7 +15,8 @@ impl ChangerPollResult {
         }
     }
 
-    pub fn next_event_counter(&self) -> u8 {
+    #[must_use]
+    pub const fn next_event_counter(&self) -> u8 {
         if self.event_counter == u8::MAX {
             1
         } else {

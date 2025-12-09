@@ -12,11 +12,11 @@ pub enum TeachModeStatus {
 impl From<u8> for TeachModeStatus {
     fn from(value: u8) -> Self {
         match value {
-            252 => TeachModeStatus::Aborted,
-            253 => TeachModeStatus::Error,
-            254 => TeachModeStatus::InProgress,
-            255 => TeachModeStatus::Completed,
-            _ => TeachModeStatus::Unknown,
+            252 => Self::Aborted,
+            253 => Self::Error,
+            254 => Self::InProgress,
+            255 => Self::Completed,
+            _ => Self::Unknown,
         }
     }
 }

@@ -1,8 +1,17 @@
-use crate::cc_talk::{ChecksumType, Packet};
+use crate::{
+    cc_talk::{ChecksumType, Packet},
+    common::checksum,
+};
 
 /// Deserializes a ccTalk packet and verifies its checksum.
 /// Returns the reply to address if successful, or an error if the checksum is invalid or the
 /// packet is malformed.
+///
+/// # Errors
+///
+/// Returns a `DeserializationError` if:
+/// - The buffer is too small to contain a valid packet.
+/// - The checksum does not match the expected value.
 pub fn deserialize<B>(
     packet: &mut Packet<B>,
     checksum_type: ChecksumType,
@@ -15,12 +24,12 @@ where
             let checksum = packet
                 .get_checksum()
                 .map_err(|_| DeserializationError::BufferTooSmall)?;
-            let expected_checksum = crate::common::checksum::crc8(packet.as_slice());
+            let expected_checksum = checksum::crc8(packet.as_slice());
 
             if checksum != expected_checksum {
                 return Err(DeserializationError::ChecksumMismatch(
-                    expected_checksum as u16,
-                    checksum as u16,
+                    u16::from(expected_checksum),
+                    u16::from(checksum),
                 ));
             }
 
@@ -29,15 +38,17 @@ where
                 .map_err(|_| DeserializationError::InvalidPacket)?)
         }
         ChecksumType::Crc16 => {
-            let checksum_msb = packet
+            let most_significant_bits = packet
                 .get_checksum()
+                .map(u16::from)
                 .map_err(|_| DeserializationError::BufferTooSmall)?;
-            let checksum_lsb = packet
+            let least_significant_bits = packet
                 .get_source()
+                .map(u16::from)
                 .map_err(|_| DeserializationError::BufferTooSmall)?;
 
-            let checksum = (checksum_msb as u16) << 8 | (checksum_lsb as u16);
-            let expected_checksum = crate::common::checksum::crc16(packet.as_slice());
+            let checksum = most_significant_bits << 8 | least_significant_bits;
+            let expected_checksum = checksum::crc16(packet.as_slice());
             if checksum != expected_checksum {
                 return Err(DeserializationError::ChecksumMismatch(
                     expected_checksum,
@@ -64,15 +75,11 @@ pub enum DeserializationError {
 impl core::fmt::Display for DeserializationError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            DeserializationError::BufferTooSmall => write!(f, "Buffer too small"),
-            DeserializationError::InvalidPacket => write!(f, "Invalid packet"),
-            DeserializationError::UnsupportedChecksumType => write!(f, "Unsupported checksum type"),
-            DeserializationError::ChecksumMismatch(expected, actual) => {
-                write!(
-                    f,
-                    "Checksum mismatch: expected {}, got {}",
-                    expected, actual
-                )
+            Self::BufferTooSmall => write!(f, "Buffer too small"),
+            Self::InvalidPacket => write!(f, "Invalid packet"),
+            Self::UnsupportedChecksumType => write!(f, "Unsupported checksum type"),
+            Self::ChecksumMismatch(expected, actual) => {
+                write!(f, "Checksum mismatch: expected {expected}, got {actual}")
             }
         }
     }
@@ -89,6 +96,6 @@ mod test {
         let result = deserialize(&mut packet, ChecksumType::Crc8);
 
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 2);
+        assert_eq!(result.expect("is_ok"), 2);
     }
 }
