@@ -18,25 +18,25 @@ pub enum ChangerDevice {
 
 impl From<ChangerDevice> for u8 {
     fn from(device: ChangerDevice) -> Self {
-        device as u8
+        device as Self
     }
 }
 
 impl From<u8> for ChangerDevice {
     fn from(value: u8) -> Self {
         match value {
-            1 => ChangerDevice::Hopper1,
-            2 => ChangerDevice::Hopper2,
-            3 => ChangerDevice::Hopper3,
-            4 => ChangerDevice::Hopper4,
-            5 => ChangerDevice::Hopper5,
-            6 => ChangerDevice::Hopper6,
-            7 => ChangerDevice::Hopper7,
-            8 => ChangerDevice::Hopper8,
-            100 => ChangerDevice::CoinAcceptor,
-            200 => ChangerDevice::Cashbox,
-            255 => ChangerDevice::System,
-            _ => ChangerDevice::Unknown,
+            1 => Self::Hopper1,
+            2 => Self::Hopper2,
+            3 => Self::Hopper3,
+            4 => Self::Hopper4,
+            5 => Self::Hopper5,
+            6 => Self::Hopper6,
+            7 => Self::Hopper7,
+            8 => Self::Hopper8,
+            100 => Self::CoinAcceptor,
+            200 => Self::Cashbox,
+            255 => Self::System,
+            _ => Self::Unknown,
         }
     }
 }

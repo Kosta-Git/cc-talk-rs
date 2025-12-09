@@ -322,28 +322,29 @@ impl CoinAcceptorError {
     /// assert!(CoinAcceptorError::InhibitedCoin.is_coin_rejected());
     /// assert!(!CoinAcceptorError::ValidationTimeout.is_coin_rejected());
     /// ```
-    pub fn is_coin_rejected(&self) -> bool {
+    #[must_use]
+    pub const fn is_coin_rejected(&self) -> bool {
         matches!(
             self,
-            CoinAcceptorError::RejectCoin
-                | CoinAcceptorError::InhibitedCoin
-                | CoinAcceptorError::MultipleWindow
-                | CoinAcceptorError::SecondCloseCoinError
-                | CoinAcceptorError::AcceptGateNotReady
-                | CoinAcceptorError::CreditSensorNotReady
-                | CoinAcceptorError::SorterNotReady
-                | CoinAcceptorError::RejectCoinNotCleared
-                | CoinAcceptorError::ValidationSensorNotReady
-                | CoinAcceptorError::CreditSensorBlocked
-                | CoinAcceptorError::SorterOptoBlocked
-                | CoinAcceptorError::DceOptoNotSeen
-                | CoinAcceptorError::RejectCoinRepeatedTrip
-                | CoinAcceptorError::RejectSlug
-                | CoinAcceptorError::AcceptGateClosedNotOpen
-                | CoinAcceptorError::ManifoldOptoBlocked
-                | CoinAcceptorError::ManifoldNotReady
-                | CoinAcceptorError::CoinTooFastValidationSensor
-                | CoinAcceptorError::CoinTooSlowValidationSensor
+            Self::RejectCoin
+                | Self::InhibitedCoin
+                | Self::MultipleWindow
+                | Self::SecondCloseCoinError
+                | Self::AcceptGateNotReady
+                | Self::CreditSensorNotReady
+                | Self::SorterNotReady
+                | Self::RejectCoinNotCleared
+                | Self::ValidationSensorNotReady
+                | Self::CreditSensorBlocked
+                | Self::SorterOptoBlocked
+                | Self::DceOptoNotSeen
+                | Self::RejectCoinRepeatedTrip
+                | Self::RejectSlug
+                | Self::AcceptGateClosedNotOpen
+                | Self::ManifoldOptoBlocked
+                | Self::ManifoldNotReady
+                | Self::CoinTooFastValidationSensor
+                | Self::CoinTooSlowValidationSensor
         )
     }
 
@@ -360,15 +361,16 @@ impl CoinAcceptorError {
     /// assert!(CoinAcceptorError::WakeUpTimeout.is_possible_rejection());
     /// assert!(!CoinAcceptorError::RejectCoin.is_possible_rejection());
     /// ```
-    pub fn is_possible_rejection(&self) -> bool {
+    #[must_use]
+    pub const fn is_possible_rejection(&self) -> bool {
         matches!(
             self,
-            CoinAcceptorError::WakeUpTimeout
-                | CoinAcceptorError::ValidationTimeout
-                | CoinAcceptorError::CreditSensorTimeout
-                | CoinAcceptorError::DceOptoTimeout
-                | CoinAcceptorError::SecurityStatusChanged
-                | CoinAcceptorError::MotorException
+            Self::WakeUpTimeout
+                | Self::ValidationTimeout
+                | Self::CreditSensorTimeout
+                | Self::DceOptoTimeout
+                | Self::SecurityStatusChanged
+                | Self::MotorException
         )
     }
 
@@ -381,8 +383,9 @@ impl CoinAcceptorError {
     /// assert!(CoinAcceptorError::NullEvent.is_null_event());
     /// assert!(!CoinAcceptorError::RejectCoin.is_null_event());
     /// ```
-    pub fn is_null_event(&self) -> bool {
-        matches!(self, CoinAcceptorError::NullEvent)
+    #[must_use]
+    pub const fn is_null_event(&self) -> bool {
+        matches!(self, Self::NullEvent)
     }
 
     /// Returns `true` if this error indicates a potential fraud attempt
@@ -398,23 +401,24 @@ impl CoinAcceptorError {
     /// assert!(CoinAcceptorError::CoinGoingBackwards.is_fraud_related());
     /// assert!(!CoinAcceptorError::ValidationTimeout.is_fraud_related());
     /// ```
-    pub fn is_fraud_related(&self) -> bool {
+    #[must_use]
+    pub const fn is_fraud_related(&self) -> bool {
         matches!(
             self,
-            CoinAcceptorError::CreditSequenceError
-                | CoinAcceptorError::CoinGoingBackwards
-                | CoinAcceptorError::CoinTooFastCreditSensor
-                | CoinAcceptorError::CoinTooSlowCreditSensor
-                | CoinAcceptorError::CoinOnStringMechanism
-                | CoinAcceptorError::DceOptoNotSeen
-                | CoinAcceptorError::CreditSensorReachedTooEarly
-                | CoinAcceptorError::RejectCoinRepeatedTrip
-                | CoinAcceptorError::RejectSlug
-                | CoinAcceptorError::SecurityStatusChanged
-                | CoinAcceptorError::SwallowedCoin
-                | CoinAcceptorError::CoinTooFastValidationSensor
-                | CoinAcceptorError::CoinTooSlowValidationSensor
-                | CoinAcceptorError::ExternalLightAttack
+            Self::CreditSequenceError
+                | Self::CoinGoingBackwards
+                | Self::CoinTooFastCreditSensor
+                | Self::CoinTooSlowCreditSensor
+                | Self::CoinOnStringMechanism
+                | Self::DceOptoNotSeen
+                | Self::CreditSensorReachedTooEarly
+                | Self::RejectCoinRepeatedTrip
+                | Self::RejectSlug
+                | Self::SecurityStatusChanged
+                | Self::SwallowedCoin
+                | Self::CoinTooFastValidationSensor
+                | Self::CoinTooSlowValidationSensor
+                | Self::ExternalLightAttack
         )
     }
 
@@ -431,18 +435,19 @@ impl CoinAcceptorError {
     /// assert!(CoinAcceptorError::MotorException.is_hardware_issue());
     /// assert!(!CoinAcceptorError::RejectCoin.is_hardware_issue());
     /// ```
-    pub fn is_hardware_issue(&self) -> bool {
+    #[must_use]
+    pub const fn is_hardware_issue(&self) -> bool {
         matches!(
             self,
-            CoinAcceptorError::ValidationSensorNotReady
-                | CoinAcceptorError::CreditSensorBlocked
-                | CoinAcceptorError::SorterOptoBlocked
-                | CoinAcceptorError::RejectSensorBlocked
-                | CoinAcceptorError::AcceptGateOpenNotClosed
-                | CoinAcceptorError::AcceptGateClosedNotOpen
-                | CoinAcceptorError::ManifoldOptoBlocked
-                | CoinAcceptorError::MotorException
-                | CoinAcceptorError::CoinIncorrectlySorted
+            Self::ValidationSensorNotReady
+                | Self::CreditSensorBlocked
+                | Self::SorterOptoBlocked
+                | Self::RejectSensorBlocked
+                | Self::AcceptGateOpenNotClosed
+                | Self::AcceptGateClosedNotOpen
+                | Self::ManifoldOptoBlocked
+                | Self::MotorException
+                | Self::CoinIncorrectlySorted
         )
     }
 
@@ -459,15 +464,16 @@ impl CoinAcceptorError {
     /// assert!(CoinAcceptorError::SorterNotReady.is_timing_issue());
     /// assert!(!CoinAcceptorError::RejectCoin.is_timing_issue());
     /// ```
-    pub fn is_timing_issue(&self) -> bool {
+    #[must_use]
+    pub const fn is_timing_issue(&self) -> bool {
         matches!(
             self,
-            CoinAcceptorError::SecondCloseCoinError
-                | CoinAcceptorError::AcceptGateNotReady
-                | CoinAcceptorError::CreditSensorNotReady
-                | CoinAcceptorError::SorterNotReady
-                | CoinAcceptorError::RejectCoinNotCleared
-                | CoinAcceptorError::ManifoldNotReady
+            Self::SecondCloseCoinError
+                | Self::AcceptGateNotReady
+                | Self::CreditSensorNotReady
+                | Self::SorterNotReady
+                | Self::RejectCoinNotCleared
+                | Self::ManifoldNotReady
         )
     }
 
@@ -480,100 +486,73 @@ impl CoinAcceptorError {
     /// let error = CoinAcceptorError::RejectCoin;
     /// assert_eq!(error.description(), "Coin rejected - did not match any programmed coin type");
     /// ```
-    pub fn description(&self) -> &'static str {
+    #[must_use]
+    pub const fn description(&self) -> &'static str {
         match self {
-            CoinAcceptorError::NullEvent => "No error occurred",
-            CoinAcceptorError::RejectCoin => {
-                "Coin rejected - did not match any programmed coin type"
-            }
-            CoinAcceptorError::InhibitedCoin => "Coin rejected - inhibited by inhibit register",
-            CoinAcceptorError::MultipleWindow => {
-                "Coin rejected - matched multiple enabled window types"
-            }
-            CoinAcceptorError::WakeUpTimeout => "Wake-up sensor timeout - possible coin jam",
-            CoinAcceptorError::ValidationTimeout => "Validation area timeout - possible coin jam",
-            CoinAcceptorError::CreditSensorTimeout => "Credit sensor timeout - possible coin jam",
-            CoinAcceptorError::SorterOptoTimeout => {
-                "Sorter optical sensor timeout - possible coin jam"
-            }
-            CoinAcceptorError::SecondCloseCoinError => "Second coin inserted too close to first",
-            CoinAcceptorError::AcceptGateNotReady => {
-                "Accept gate not ready - coins inserted too quickly"
-            }
-            CoinAcceptorError::CreditSensorNotReady => {
-                "Credit sensor not ready - coins inserted too quickly"
-            }
-            CoinAcceptorError::SorterNotReady => "Sorter not ready - coins inserted too quickly",
-            CoinAcceptorError::RejectCoinNotCleared => "Previous rejected coin not cleared",
-            CoinAcceptorError::ValidationSensorNotReady => {
+            Self::NullEvent => "No error occurred",
+            Self::RejectCoin => "Coin rejected - did not match any programmed coin type",
+            Self::InhibitedCoin => "Coin rejected - inhibited by inhibit register",
+            Self::MultipleWindow => "Coin rejected - matched multiple enabled window types",
+            Self::WakeUpTimeout => "Wake-up sensor timeout - possible coin jam",
+            Self::ValidationTimeout => "Validation area timeout - possible coin jam",
+            Self::CreditSensorTimeout => "Credit sensor timeout - possible coin jam",
+            Self::SorterOptoTimeout => "Sorter optical sensor timeout - possible coin jam",
+            Self::SecondCloseCoinError => "Second coin inserted too close to first",
+            Self::AcceptGateNotReady => "Accept gate not ready - coins inserted too quickly",
+            Self::CreditSensorNotReady => "Credit sensor not ready - coins inserted too quickly",
+            Self::SorterNotReady => "Sorter not ready - coins inserted too quickly",
+            Self::RejectCoinNotCleared => "Previous rejected coin not cleared",
+            Self::ValidationSensorNotReady => {
                 "Validation sensor not ready - possible developing fault"
             }
-            CoinAcceptorError::CreditSensorBlocked => "Credit sensor permanently blocked",
-            CoinAcceptorError::SorterOptoBlocked => "Sorter exit sensor permanently blocked",
-            CoinAcceptorError::CreditSequenceError => {
-                "Credit sequence error - possible fraud attempt"
-            }
-            CoinAcceptorError::CoinGoingBackwards => {
-                "Coin going backwards - possible fraud attempt"
-            }
-            CoinAcceptorError::CoinTooFastCreditSensor => {
+            Self::CreditSensorBlocked => "Credit sensor permanently blocked",
+            Self::SorterOptoBlocked => "Sorter exit sensor permanently blocked",
+            Self::CreditSequenceError => "Credit sequence error - possible fraud attempt",
+            Self::CoinGoingBackwards => "Coin going backwards - possible fraud attempt",
+            Self::CoinTooFastCreditSensor => {
                 "Coin too fast over credit sensor - possible fraud attempt"
             }
-            CoinAcceptorError::CoinTooSlowCreditSensor => {
+            Self::CoinTooSlowCreditSensor => {
                 "Coin too slow over credit sensor - possible fraud attempt"
             }
-            CoinAcceptorError::CoinOnStringMechanism => {
+            Self::CoinOnStringMechanism => {
                 "Coin-on-string mechanism activated - fraud attempt detected"
             }
-            CoinAcceptorError::DceOptoTimeout => {
-                "Dual Coin Entry optical timeout - possible coin jam"
-            }
-            CoinAcceptorError::DceOptoNotSeen => {
+            Self::DceOptoTimeout => "Dual Coin Entry optical timeout - possible coin jam",
+            Self::DceOptoNotSeen => {
                 "Dual Coin Entry optical sensor bypass - possible fraud attempt"
             }
-            CoinAcceptorError::CreditSensorReachedTooEarly => {
+            Self::CreditSensorReachedTooEarly => {
                 "Credit sensor reached too early - possible fraud attempt"
             }
-            CoinAcceptorError::RejectCoinRepeatedTrip => {
+            Self::RejectCoinRepeatedTrip => {
                 "Repeated sequential coin rejection - possible fraud attempt"
             }
-            CoinAcceptorError::RejectSlug => "Known slug detected and rejected",
-            CoinAcceptorError::RejectSensorBlocked => "Reject sensor permanently blocked",
-            CoinAcceptorError::GamesOverload => "Games overload - configuration error",
-            CoinAcceptorError::MaxCoinMeterPulsesExceeded => {
+            Self::RejectSlug => "Known slug detected and rejected",
+            Self::RejectSensorBlocked => "Reject sensor permanently blocked",
+            Self::GamesOverload => "Games overload - configuration error",
+            Self::MaxCoinMeterPulsesExceeded => {
                 "Maximum coin meter pulses exceeded - configuration error"
             }
-            CoinAcceptorError::AcceptGateOpenNotClosed => {
-                "Accept gate forced open when should be closed"
-            }
-            CoinAcceptorError::AcceptGateClosedNotOpen => "Accept gate failed to open when driven",
-            CoinAcceptorError::ManifoldOptoTimeout => {
-                "Manifold optical timeout - possible coin jam"
-            }
-            CoinAcceptorError::ManifoldOptoBlocked => "Manifold sensor permanently blocked",
-            CoinAcceptorError::ManifoldNotReady => {
-                "Manifold not ready - coins inserted too quickly"
-            }
-            CoinAcceptorError::SecurityStatusChanged => {
-                "Security status changed due to fraud detection"
-            }
-            CoinAcceptorError::MotorException => "Motor exception - mechanical problem",
-            CoinAcceptorError::SwallowedCoin => "Swallowed coin - hardware failure or fraud",
-            CoinAcceptorError::CoinTooFastValidationSensor => {
+            Self::AcceptGateOpenNotClosed => "Accept gate forced open when should be closed",
+            Self::AcceptGateClosedNotOpen => "Accept gate failed to open when driven",
+            Self::ManifoldOptoTimeout => "Manifold optical timeout - possible coin jam",
+            Self::ManifoldOptoBlocked => "Manifold sensor permanently blocked",
+            Self::ManifoldNotReady => "Manifold not ready - coins inserted too quickly",
+            Self::SecurityStatusChanged => "Security status changed due to fraud detection",
+            Self::MotorException => "Motor exception - mechanical problem",
+            Self::SwallowedCoin => "Swallowed coin - hardware failure or fraud",
+            Self::CoinTooFastValidationSensor => {
                 "Coin too fast over validation sensor - possible fraud attempt"
             }
-            CoinAcceptorError::CoinTooSlowValidationSensor => {
+            Self::CoinTooSlowValidationSensor => {
                 "Coin too slow over validation sensor - possible fraud attempt"
             }
-            CoinAcceptorError::CoinIncorrectlySorted => {
-                "Coin incorrectly sorted - hardware fault notification"
-            }
-            CoinAcceptorError::ExternalLightAttack => "External light attack detected",
-            CoinAcceptorError::DataBlockRequest => "Data block request - attention needed",
-            CoinAcceptorError::CoinReturnMechanism => {
-                "Coin return mechanism activated - flight deck opened"
-            }
-            CoinAcceptorError::UnspecifiedAlarm => "Unspecified alarm code",
+            Self::CoinIncorrectlySorted => "Coin incorrectly sorted - hardware fault notification",
+            Self::ExternalLightAttack => "External light attack detected",
+            Self::DataBlockRequest => "Data block request - attention needed",
+            Self::CoinReturnMechanism => "Coin return mechanism activated - flight deck opened",
+            Self::UnspecifiedAlarm => "Unspecified alarm code",
         }
     }
 }
@@ -599,51 +578,50 @@ impl TryFrom<u8> for CoinAcceptorError {
     /// ```
     fn try_from(code: u8) -> Result<Self, ()> {
         match code {
-            0 => Ok(CoinAcceptorError::NullEvent),
-            1 => Ok(CoinAcceptorError::RejectCoin),
-            2 => Ok(CoinAcceptorError::InhibitedCoin),
-            3 => Ok(CoinAcceptorError::MultipleWindow),
-            4 => Ok(CoinAcceptorError::WakeUpTimeout),
-            5 => Ok(CoinAcceptorError::ValidationTimeout),
-            6 => Ok(CoinAcceptorError::CreditSensorTimeout),
-            7 => Ok(CoinAcceptorError::SorterOptoTimeout),
-            8 => Ok(CoinAcceptorError::SecondCloseCoinError),
-            9 => Ok(CoinAcceptorError::AcceptGateNotReady),
-            10 => Ok(CoinAcceptorError::CreditSensorNotReady),
-            11 => Ok(CoinAcceptorError::SorterNotReady),
-            12 => Ok(CoinAcceptorError::RejectCoinNotCleared),
-            13 => Ok(CoinAcceptorError::ValidationSensorNotReady),
-            14 => Ok(CoinAcceptorError::CreditSensorBlocked),
-            15 => Ok(CoinAcceptorError::SorterOptoBlocked),
-            16 => Ok(CoinAcceptorError::CreditSequenceError),
-            17 => Ok(CoinAcceptorError::CoinGoingBackwards),
-            18 => Ok(CoinAcceptorError::CoinTooFastCreditSensor),
-            19 => Ok(CoinAcceptorError::CoinTooSlowCreditSensor),
-            20 => Ok(CoinAcceptorError::CoinOnStringMechanism),
-            21 => Ok(CoinAcceptorError::DceOptoTimeout),
-            22 => Ok(CoinAcceptorError::DceOptoNotSeen),
-            23 => Ok(CoinAcceptorError::CreditSensorReachedTooEarly),
-            24 => Ok(CoinAcceptorError::RejectCoinRepeatedTrip),
-            25 => Ok(CoinAcceptorError::RejectSlug),
-            26 => Ok(CoinAcceptorError::RejectSensorBlocked),
-            27 => Ok(CoinAcceptorError::GamesOverload),
-            28 => Ok(CoinAcceptorError::MaxCoinMeterPulsesExceeded),
-            29 => Ok(CoinAcceptorError::AcceptGateOpenNotClosed),
-            30 => Ok(CoinAcceptorError::AcceptGateClosedNotOpen),
-            31 => Ok(CoinAcceptorError::ManifoldOptoTimeout),
-            32 => Ok(CoinAcceptorError::ManifoldOptoBlocked),
-            33 => Ok(CoinAcceptorError::ManifoldNotReady),
-            34 => Ok(CoinAcceptorError::SecurityStatusChanged),
-            35 => Ok(CoinAcceptorError::MotorException),
-            36 => Ok(CoinAcceptorError::SwallowedCoin),
-            37 => Ok(CoinAcceptorError::CoinTooFastValidationSensor),
-            38 => Ok(CoinAcceptorError::CoinTooSlowValidationSensor),
-            39 => Ok(CoinAcceptorError::CoinIncorrectlySorted),
-            40 => Ok(CoinAcceptorError::ExternalLightAttack),
-            128..=159 => Ok(CoinAcceptorError::InhibitedCoin), // Type 1-32 inhibited coins
-            253 => Ok(CoinAcceptorError::DataBlockRequest),
-            254 => Ok(CoinAcceptorError::CoinReturnMechanism),
-            255 => Ok(CoinAcceptorError::UnspecifiedAlarm),
+            0 => Ok(Self::NullEvent),
+            1 => Ok(Self::RejectCoin),
+            2 | 128..=159 => Ok(Self::InhibitedCoin), // Type 1-32 inhibited coins
+            3 => Ok(Self::MultipleWindow),
+            4 => Ok(Self::WakeUpTimeout),
+            5 => Ok(Self::ValidationTimeout),
+            6 => Ok(Self::CreditSensorTimeout),
+            7 => Ok(Self::SorterOptoTimeout),
+            8 => Ok(Self::SecondCloseCoinError),
+            9 => Ok(Self::AcceptGateNotReady),
+            10 => Ok(Self::CreditSensorNotReady),
+            11 => Ok(Self::SorterNotReady),
+            12 => Ok(Self::RejectCoinNotCleared),
+            13 => Ok(Self::ValidationSensorNotReady),
+            14 => Ok(Self::CreditSensorBlocked),
+            15 => Ok(Self::SorterOptoBlocked),
+            16 => Ok(Self::CreditSequenceError),
+            17 => Ok(Self::CoinGoingBackwards),
+            18 => Ok(Self::CoinTooFastCreditSensor),
+            19 => Ok(Self::CoinTooSlowCreditSensor),
+            20 => Ok(Self::CoinOnStringMechanism),
+            21 => Ok(Self::DceOptoTimeout),
+            22 => Ok(Self::DceOptoNotSeen),
+            23 => Ok(Self::CreditSensorReachedTooEarly),
+            24 => Ok(Self::RejectCoinRepeatedTrip),
+            25 => Ok(Self::RejectSlug),
+            26 => Ok(Self::RejectSensorBlocked),
+            27 => Ok(Self::GamesOverload),
+            28 => Ok(Self::MaxCoinMeterPulsesExceeded),
+            29 => Ok(Self::AcceptGateOpenNotClosed),
+            30 => Ok(Self::AcceptGateClosedNotOpen),
+            31 => Ok(Self::ManifoldOptoTimeout),
+            32 => Ok(Self::ManifoldOptoBlocked),
+            33 => Ok(Self::ManifoldNotReady),
+            34 => Ok(Self::SecurityStatusChanged),
+            35 => Ok(Self::MotorException),
+            36 => Ok(Self::SwallowedCoin),
+            37 => Ok(Self::CoinTooFastValidationSensor),
+            38 => Ok(Self::CoinTooSlowValidationSensor),
+            39 => Ok(Self::CoinIncorrectlySorted),
+            40 => Ok(Self::ExternalLightAttack),
+            253 => Ok(Self::DataBlockRequest),
+            254 => Ok(Self::CoinReturnMechanism),
+            255 => Ok(Self::UnspecifiedAlarm),
             _ => Err(()),
         }
     }
@@ -660,6 +638,6 @@ impl From<CoinAcceptorError> for u8 {
     /// assert_eq!(code, 1);
     /// ```
     fn from(error: CoinAcceptorError) -> Self {
-        error as u8
+        error as Self
     }
 }

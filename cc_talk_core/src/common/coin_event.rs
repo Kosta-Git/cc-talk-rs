@@ -10,8 +10,8 @@ pub enum SorterPath {
 impl From<u8> for SorterPath {
     fn from(value: u8) -> Self {
         match value {
-            0 => SorterPath::NotSupported,
-            _ => SorterPath::Path(value),
+            0 => Self::NotSupported,
+            _ => Self::Path(value),
         }
     }
 }
@@ -31,24 +31,27 @@ pub enum CoinEvent {
     Reset,
 }
 impl CoinEvent {
+    #[must_use]
     pub fn new(result_a: u8, result_b: u8) -> Self {
         match result_a {
-            0 => CoinEvent::Error(
+            0 => Self::Error(
                 CoinAcceptorError::try_from(result_b).unwrap_or(CoinAcceptorError::NullEvent),
             ),
-            _ => CoinEvent::Credit(CoinCredit {
+            _ => Self::Credit(CoinCredit {
                 credit: result_a,
                 sorter_path: SorterPath::from(result_b),
             }),
         }
     }
 
-    pub fn is_error(&self) -> bool {
-        matches!(self, CoinEvent::Error(_))
+    #[must_use]
+    pub const fn is_error(&self) -> bool {
+        matches!(self, Self::Error(_))
     }
 
-    pub fn is_credit(&self) -> bool {
-        matches!(self, CoinEvent::Credit(_))
+    #[must_use]
+    pub const fn is_credit(&self) -> bool {
+        matches!(self, Self::Credit(_))
     }
 }
 
@@ -61,8 +64,9 @@ pub struct CoinAcceptorPollResult {
     pub events: heapless::Vec<CoinEvent, MAX_COIN_EVENT_SIZE>,
 }
 impl CoinAcceptorPollResult {
-    pub fn new(event_counter: u8) -> Self {
-        CoinAcceptorPollResult {
+    #[must_use]
+    pub const fn new(event_counter: u8) -> Self {
+        Self {
             event_counter,
             events: heapless::Vec::new(),
             lost_events: 0,
@@ -73,6 +77,7 @@ impl CoinAcceptorPollResult {
         self.events.push(event).ok();
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
     }
@@ -87,6 +92,7 @@ pub enum CoinAcceptorPollResultError {
 impl TryFrom<(&[u8], u8)> for CoinAcceptorPollResult {
     type Error = CoinAcceptorPollResultError;
 
+    #[allow(clippy::cast_possible_truncation)]
     fn try_from(value: (&[u8], u8)) -> Result<Self, Self::Error> {
         let (value, event_counter) = value;
         if value.is_empty() {
@@ -98,7 +104,7 @@ impl TryFrom<(&[u8], u8)> for CoinAcceptorPollResult {
         if received_event_counter == 0 {
             let mut events = heapless::Vec::new();
             events.push(CoinEvent::Reset).ok();
-            return Ok(CoinAcceptorPollResult {
+            return Ok(Self {
                 event_counter,
                 events,
                 lost_events: 0,
@@ -132,7 +138,7 @@ impl TryFrom<(&[u8], u8)> for CoinAcceptorPollResult {
             let _ = events.insert(i as usize, CoinEvent::new(result_a, result_b));
         }
 
-        Ok(CoinAcceptorPollResult {
+        Ok(Self {
             event_counter: received_event_counter,
             lost_events,
             events,
@@ -171,7 +177,8 @@ mod test {
     #[test]
     fn event_lost() {
         let buffer = [6u8, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5]; // One event lost
-        let result = CoinAcceptorPollResult::try_from((&buffer[..], 0)).unwrap();
+        let result =
+            CoinAcceptorPollResult::try_from((&buffer[..], 0)).expect("should parse events");
         assert_eq!(result.lost_events, 1, "one event should be lost");
         assert_eq!(result.event_counter, 6, "event counter should be 6");
         assert_eq!(result.events.len(), 5, "should have 5 events");

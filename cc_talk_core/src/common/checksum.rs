@@ -6,8 +6,8 @@ use super::packet::{
 
 /// ccTalk checksum types.
 ///
-/// The two main checksum types are simple checksum ([ChecksumType::Crc8]) and the
-/// [ChecksumType::Crc16].
+/// The two main checksum types are simple checksum (`[ChecksumType::Crc8]`) and the
+/// `[ChecksumType::Crc16]`.
 ///
 /// A 5 bit checksum is also used for USB full speed, however I never saw it used in practice.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -17,10 +17,10 @@ pub enum ChecksumType {
     Crc16,
 }
 
-// Calculates the crc16 checksum for a ccTalk block.
+/// Calculates the crc16 checksum for a ccTalk block.
 ///
 /// This function assumes a valid ccTalk block, which would be at least 4 bytes long, maximum 256
-/// bytes. As well as the data block being the size specified at [DATA_LENGTH_OFFSET].
+/// bytes. As well as the data block being the size specified at [`DATA_LENGTH_OFFSET`].
 ///
 /// # Implementation
 ///
@@ -53,6 +53,7 @@ pub enum ChecksumType {
 /// # Panics
 ///
 /// This function assumes that the block is a valid ccTalk block and has a length of at least 4 bytes.
+#[must_use]
 pub fn crc16(block: &[u8]) -> u16 {
     #[cfg(not(feature = "crc-lookup"))]
     return crc16_compute(block);
@@ -86,7 +87,7 @@ fn crc16_lookup(block: &[u8]) -> u16 {
 }
 
 fn crc16_compute_pass(mut crc: u16, byte: u8) -> u16 {
-    crc ^= (byte as u16) << 8;
+    crc ^= u16::from(byte) << 8;
     for _ in 0..8 {
         if crc & 0x8000 != 0 {
             crc = (crc << 1) ^ 0x1021;
@@ -97,7 +98,7 @@ fn crc16_compute_pass(mut crc: u16, byte: u8) -> u16 {
     crc
 }
 
-fn crc16_lookup_pass(crc: u16, byte: u8) -> u16 {
+const fn crc16_lookup_pass(crc: u16, byte: u8) -> u16 {
     let table_index = (crc >> 8) ^ (byte as u16);
     (crc << 8) ^ CRC_CCITT_LOOKUP[table_index as usize]
 }
@@ -130,7 +131,7 @@ const CRC_CCITT_LOOKUP: [u16; 256] = [
 /// Calculates the simple checksum for a ccTalk block.
 ///
 /// This function assumes a valid ccTalk block, which would be at least 4 bytes long, maximum 256
-/// bytes. As well as the data block being the size specified at [DATA_LENGTH_OFFSET].
+/// bytes. As well as the data block being the size specified at [`DATA_LENGTH_OFFSET`].
 ///
 /// # Definition
 ///
@@ -140,6 +141,8 @@ const CRC_CCITT_LOOKUP: [u16; 256] = [
 /// # Panics
 ///
 /// This function assumes that the block is a valid ccTalk block and has a length of at least 4 bytes.
+#[must_use]
+#[allow(clippy::cast_possible_truncation)]
 pub fn crc8(block: &[u8]) -> u8 {
     let data_end_offset = DATA_OFFSET + block[DATA_LENGTH_OFFSET] as usize;
     let crc = [
@@ -152,17 +155,12 @@ pub fn crc8(block: &[u8]) -> u8 {
     .chain(block[DATA_OFFSET..data_end_offset].iter())
     .fold(0u8, |acc, &byte| acc.wrapping_add(byte));
 
-    (256u16 - crc as u16) as u8
+    (256u16 - u16::from(crc)) as u8
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn test() {
-        crc16(&[0, 0, 0, 0]);
-    }
 
     #[test]
     fn example_simple_checksum() {

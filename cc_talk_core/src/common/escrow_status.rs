@@ -12,9 +12,9 @@ impl TryFrom<u8> for EscrowOperatingStatus {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(EscrowOperatingStatus::Idle),
-            1 => Ok(EscrowOperatingStatus::Operating),
-            2 => Ok(EscrowOperatingStatus::FaultCondition),
+            0 => Ok(Self::Idle),
+            1 => Ok(Self::Operating),
+            2 => Ok(Self::FaultCondition),
             _ => Err("Invalid value for EscrowOperatingStatus"),
         }
     }
@@ -33,8 +33,8 @@ impl TryFrom<u8> for EscrowLevelStatus {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(EscrowLevelStatus::EmptyOrNotFull),
-            255 => Ok(EscrowLevelStatus::Full),
+            0 => Ok(Self::EmptyOrNotFull),
+            255 => Ok(Self::Full),
             _ => Err("Invalid value for EscrowLevelStatus"),
         }
     }
@@ -69,26 +69,26 @@ pub enum EscrowFaultCode {
 impl From<u8> for EscrowFaultCode {
     fn from(value: u8) -> Self {
         match value {
-            0 => EscrowFaultCode::NoFault,
-            10 => EscrowFaultCode::FailureToOpenAcceptFlap,
-            11 => EscrowFaultCode::FailureToOpenAcceptFlapFromHome,
-            12 => EscrowFaultCode::FailureToOpenAcceptFlapFromUnknown,
-            20 => EscrowFaultCode::FailureToCloseAcceptFlap,
-            21 => EscrowFaultCode::FailureToCloseAcceptFlapAfterAccept,
-            22 => EscrowFaultCode::FailureToCloseAcceptFlapAfterFailedAccept,
-            23 => EscrowFaultCode::FailureToCloseAcceptFlapAfterFromUnknown,
-            30 => EscrowFaultCode::FailureToOpenReturnFlap,
-            31 => EscrowFaultCode::FailureToOpenReturnFlapFromHome,
-            32 => EscrowFaultCode::FailureToOpenReturnFlapFromUnknown,
-            40 => EscrowFaultCode::FailureToCloseReturnFlap,
-            41 => EscrowFaultCode::FailureToCloseReturnFlapAfterReturn,
-            42 => EscrowFaultCode::FailureToCloseReturnFlapAfterFailedReturn,
-            43 => EscrowFaultCode::FailureToCloseReturnFlapFromUnknown,
-            100 => EscrowFaultCode::SupplyUnderVoltage,
-            101 => EscrowFaultCode::SupplyOverVoltage,
-            200 => EscrowFaultCode::FraudulentManipulationDetected,
-            250 => EscrowFaultCode::OverCurrentOrJammed,
-            _ => EscrowFaultCode::Other,
+            0 => Self::NoFault,
+            10 => Self::FailureToOpenAcceptFlap,
+            11 => Self::FailureToOpenAcceptFlapFromHome,
+            12 => Self::FailureToOpenAcceptFlapFromUnknown,
+            20 => Self::FailureToCloseAcceptFlap,
+            21 => Self::FailureToCloseAcceptFlapAfterAccept,
+            22 => Self::FailureToCloseAcceptFlapAfterFailedAccept,
+            23 => Self::FailureToCloseAcceptFlapAfterFromUnknown,
+            30 => Self::FailureToOpenReturnFlap,
+            31 => Self::FailureToOpenReturnFlapFromHome,
+            32 => Self::FailureToOpenReturnFlapFromUnknown,
+            40 => Self::FailureToCloseReturnFlap,
+            41 => Self::FailureToCloseReturnFlapAfterReturn,
+            42 => Self::FailureToCloseReturnFlapAfterFailedReturn,
+            43 => Self::FailureToCloseReturnFlapFromUnknown,
+            100 => Self::SupplyUnderVoltage,
+            101 => Self::SupplyOverVoltage,
+            200 => Self::FraudulentManipulationDetected,
+            250 => Self::OverCurrentOrJammed,
+            _ => Self::Other,
         }
     }
 }
@@ -107,9 +107,9 @@ impl TryFrom<u8> for EscrowServiceStatus {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(EscrowServiceStatus::None),
-            1 => Ok(EscrowServiceStatus::Recommended),
-            2 => Ok(EscrowServiceStatus::Overdue),
+            0 => Ok(Self::None),
+            1 => Ok(Self::Recommended),
+            2 => Ok(Self::Overdue),
             _ => Err("Invalid value for EscrowServiceStatus"),
         }
     }

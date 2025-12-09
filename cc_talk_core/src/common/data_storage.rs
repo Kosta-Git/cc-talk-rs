@@ -9,14 +9,15 @@ pub struct DataStorage {
 }
 
 impl DataStorage {
-    pub fn new(
+    #[must_use]
+    pub const fn new(
         memory_type: MemoryType,
         read_blocks: u16,
         read_bytes_per_block: u8,
         write_blocks: u16,
         write_bytes_per_block: u8,
     ) -> Self {
-        DataStorage {
+        Self {
             memory_type,
             read_blocks,
             read_bytes_per_block,
@@ -25,7 +26,9 @@ impl DataStorage {
         }
     }
 
-    pub fn as_bytes(&self) -> [u8; 5] {
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
+    pub const fn as_bytes(&self) -> [u8; 5] {
         [
             self.memory_type as u8,
             self.read_blocks as u8,
@@ -35,7 +38,8 @@ impl DataStorage {
         ]
     }
 
-    pub fn read_blocks(&self) -> u16 {
+    #[must_use]
+    pub const fn read_blocks(&self) -> u16 {
         if self.read_blocks == 0 {
             256
         } else {
@@ -43,7 +47,8 @@ impl DataStorage {
         }
     }
 
-    pub fn write_blocks(&self) -> u16 {
+    #[must_use]
+    pub const fn write_blocks(&self) -> u16 {
         if self.write_blocks == 0 {
             256
         } else {
@@ -51,11 +56,13 @@ impl DataStorage {
         }
     }
 
-    pub fn is_read_available(&self) -> bool {
+    #[must_use]
+    pub const fn is_read_available(&self) -> bool {
         self.read_bytes_per_block > 0
     }
 
-    pub fn is_write_available(&self) -> bool {
+    #[must_use]
+    pub const fn is_write_available(&self) -> bool {
         self.write_bytes_per_block > 0
     }
 }
@@ -68,7 +75,7 @@ impl From<DataStorage> for [u8; 5] {
 
 impl From<[u8; 5]> for DataStorage {
     fn from(bytes: [u8; 5]) -> Self {
-        DataStorage {
+        Self {
             memory_type: MemoryType::try_from(bytes[0]).expect("Invalid memory type"),
             read_blocks: u16::from(bytes[1]),
             read_bytes_per_block: bytes[2],
@@ -96,10 +103,10 @@ impl TryFrom<u8> for MemoryType {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(MemoryType::VolatileOnReset),
-            1 => Ok(MemoryType::VolatileOnPowerDown),
-            2 => Ok(MemoryType::PermanentLimitedUse),
-            3 => Ok(MemoryType::PermanentUnlimitedUse),
+            0 => Ok(Self::VolatileOnReset),
+            1 => Ok(Self::VolatileOnPowerDown),
+            2 => Ok(Self::PermanentLimitedUse),
+            3 => Ok(Self::PermanentUnlimitedUse),
             _ => Err(MemoryTypeError::InvalidMemoryType),
         }
     }
@@ -118,8 +125,8 @@ impl TryFrom<u8> for FirmwareStorageType {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(FirmwareStorageType::RomOrEprom),
-            1 => Ok(FirmwareStorageType::FlashOrEeprom),
+            0 => Ok(Self::RomOrEprom),
+            1 => Ok(Self::FlashOrEeprom),
             _ => Err(()),
         }
     }

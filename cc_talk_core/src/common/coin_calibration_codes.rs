@@ -76,75 +76,66 @@ pub enum CoinCalibrationReplyCode {
 
 impl CoinCalibrationReplyCode {
     /// Returns true if the calibration was successful
-    pub fn is_success(&self) -> bool {
-        matches!(self, CoinCalibrationReplyCode::Success)
+    #[must_use]
+    pub const fn is_success(&self) -> bool {
+        matches!(self, Self::Success)
     }
 
     /// Returns true if this represents a calibration error
-    pub fn is_error(&self) -> bool {
+    #[must_use]
+    pub const fn is_error(&self) -> bool {
         !self.is_success()
     }
 
     /// Returns true if this is a calibration failure (codes 1-4)
     ///
     /// These are operational failures as opposed to internal errors.
-    pub fn is_calibration_failure(&self) -> bool {
+    #[must_use]
+    pub const fn is_calibration_failure(&self) -> bool {
         matches!(
             self,
-            CoinCalibrationReplyCode::CalibrationDenied
-                | CoinCalibrationReplyCode::CalibrationRechargeRequired
-                | CoinCalibrationReplyCode::CalibrationFailedProductNameMismatch
-                | CoinCalibrationReplyCode::CalibrationFailedDatabaseNumberMismatch
+            Self::CalibrationDenied
+                | Self::CalibrationRechargeRequired
+                | Self::CalibrationFailedProductNameMismatch
+                | Self::CalibrationFailedDatabaseNumberMismatch
         )
     }
 
     /// Returns true if this is an internal calibration error (codes 250-255)
     ///
     /// These represent system-level errors during calibration.
-    pub fn is_internal_error(&self) -> bool {
+    #[must_use]
+    pub const fn is_internal_error(&self) -> bool {
         matches!(
             self,
-            CoinCalibrationReplyCode::CalibrationErrorKeyNotSupported
-                | CoinCalibrationReplyCode::CalibrationErrorInternalBinFailure
-                | CoinCalibrationReplyCode::CalibrationErrorOpCodeNotSupported
-                | CoinCalibrationReplyCode::CalibrationErrorIllegalParameter
-                | CoinCalibrationReplyCode::CalibrationErrorDatabaseCorrupt
-                | CoinCalibrationReplyCode::CalibrationErrorUnspecified
+            Self::CalibrationErrorKeyNotSupported
+                | Self::CalibrationErrorInternalBinFailure
+                | Self::CalibrationErrorOpCodeNotSupported
+                | Self::CalibrationErrorIllegalParameter
+                | Self::CalibrationErrorDatabaseCorrupt
+                | Self::CalibrationErrorUnspecified
         )
     }
 
     /// Returns a human-readable description of the error
-    pub fn description(&self) -> &'static str {
+    #[must_use]
+    pub const fn description(&self) -> &'static str {
         match self {
-            CoinCalibrationReplyCode::Success => "calibration completed successfully",
-            CoinCalibrationReplyCode::CalibrationDenied => "calibration denied",
-            CoinCalibrationReplyCode::CalibrationRechargeRequired => {
-                "calibration recharge required"
-            }
-            CoinCalibrationReplyCode::CalibrationFailedProductNameMismatch => {
+            Self::Success => "calibration completed successfully",
+            Self::CalibrationDenied => "calibration denied",
+            Self::CalibrationRechargeRequired => "calibration recharge required",
+            Self::CalibrationFailedProductNameMismatch => {
                 "calibration failed (product name mismatch)"
             }
-            CoinCalibrationReplyCode::CalibrationFailedDatabaseNumberMismatch => {
+            Self::CalibrationFailedDatabaseNumberMismatch => {
                 "calibration failed (database number mismatch)"
             }
-            CoinCalibrationReplyCode::CalibrationErrorKeyNotSupported => {
-                "calibration error (key not supported)"
-            }
-            CoinCalibrationReplyCode::CalibrationErrorInternalBinFailure => {
-                "calibration error (internal bin failure)"
-            }
-            CoinCalibrationReplyCode::CalibrationErrorOpCodeNotSupported => {
-                "calibration error (op-code not supported)"
-            }
-            CoinCalibrationReplyCode::CalibrationErrorIllegalParameter => {
-                "calibration error (illegal parameter)"
-            }
-            CoinCalibrationReplyCode::CalibrationErrorDatabaseCorrupt => {
-                "calibration error (database corrupt)"
-            }
-            CoinCalibrationReplyCode::CalibrationErrorUnspecified => {
-                "calibration error (unspecified)"
-            }
+            Self::CalibrationErrorKeyNotSupported => "calibration error (key not supported)",
+            Self::CalibrationErrorInternalBinFailure => "calibration error (internal bin failure)",
+            Self::CalibrationErrorOpCodeNotSupported => "calibration error (op-code not supported)",
+            Self::CalibrationErrorIllegalParameter => "calibration error (illegal parameter)",
+            Self::CalibrationErrorDatabaseCorrupt => "calibration error (database corrupt)",
+            Self::CalibrationErrorUnspecified => "calibration error (unspecified)",
         }
     }
 }
@@ -154,17 +145,17 @@ impl TryFrom<u8> for CoinCalibrationReplyCode {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(CoinCalibrationReplyCode::Success),
-            1 => Ok(CoinCalibrationReplyCode::CalibrationDenied),
-            2 => Ok(CoinCalibrationReplyCode::CalibrationRechargeRequired),
-            3 => Ok(CoinCalibrationReplyCode::CalibrationFailedProductNameMismatch),
-            4 => Ok(CoinCalibrationReplyCode::CalibrationFailedDatabaseNumberMismatch),
-            250 => Ok(CoinCalibrationReplyCode::CalibrationErrorKeyNotSupported),
-            251 => Ok(CoinCalibrationReplyCode::CalibrationErrorInternalBinFailure),
-            252 => Ok(CoinCalibrationReplyCode::CalibrationErrorOpCodeNotSupported),
-            253 => Ok(CoinCalibrationReplyCode::CalibrationErrorIllegalParameter),
-            254 => Ok(CoinCalibrationReplyCode::CalibrationErrorDatabaseCorrupt),
-            255 => Ok(CoinCalibrationReplyCode::CalibrationErrorUnspecified),
+            0 => Ok(Self::Success),
+            1 => Ok(Self::CalibrationDenied),
+            2 => Ok(Self::CalibrationRechargeRequired),
+            3 => Ok(Self::CalibrationFailedProductNameMismatch),
+            4 => Ok(Self::CalibrationFailedDatabaseNumberMismatch),
+            250 => Ok(Self::CalibrationErrorKeyNotSupported),
+            251 => Ok(Self::CalibrationErrorInternalBinFailure),
+            252 => Ok(Self::CalibrationErrorOpCodeNotSupported),
+            253 => Ok(Self::CalibrationErrorIllegalParameter),
+            254 => Ok(Self::CalibrationErrorDatabaseCorrupt),
+            255 => Ok(Self::CalibrationErrorUnspecified),
             _ => Err(InvalidCalibrationReplyCode(value)),
         }
     }
@@ -172,7 +163,7 @@ impl TryFrom<u8> for CoinCalibrationReplyCode {
 
 impl From<CoinCalibrationReplyCode> for u8 {
     fn from(code: CoinCalibrationReplyCode) -> Self {
-        code as u8
+        code as Self
     }
 }
 

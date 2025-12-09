@@ -17,8 +17,9 @@ impl Device {
     /// # Note
     ///
     /// Encryption is not implemented yet, so its set to false by default.
-    pub fn new(address: u8, category: Category, checksum_type: ChecksumType) -> Self {
-        Device {
+    #[must_use]
+    pub const fn new(address: u8, category: Category, checksum_type: ChecksumType) -> Self {
+        Self {
             address,
             category,
             checksum_type,
@@ -26,19 +27,23 @@ impl Device {
         }
     }
 
-    pub fn address(&self) -> u8 {
+    #[must_use]
+    pub const fn address(&self) -> u8 {
         self.address
     }
 
-    pub fn category(&self) -> &Category {
+    #[must_use]
+    pub const fn category(&self) -> &Category {
         &self.category
     }
 
-    pub fn checksum_type(&self) -> &ChecksumType {
+    #[must_use]
+    pub const fn checksum_type(&self) -> &ChecksumType {
         &self.checksum_type
     }
 
-    pub fn encrypted(&self) -> bool {
+    #[must_use]
+    pub const fn encrypted(&self) -> bool {
         self.encrypted
     }
 }
@@ -49,34 +54,40 @@ impl Device {
 pub struct SerialCode(u8, u8, u8);
 impl SerialCode {
     /// Creates a new serial code.
-    pub fn new(a: u8, b: u8, c: u8) -> Self {
-        SerialCode(a, b, c)
+    #[must_use]
+    pub const fn new(a: u8, b: u8, c: u8) -> Self {
+        Self(a, b, c)
     }
 
     /// Returns the first byte of the serial code.
-    pub fn major(&self) -> u8 {
+    #[must_use]
+    pub const fn major(&self) -> u8 {
         self.0
     }
 
     /// Returns the second byte of the serial code.
-    pub fn minor(&self) -> u8 {
+    #[must_use]
+    pub const fn minor(&self) -> u8 {
         self.1
     }
 
     /// Returns the third byte of the serial code.
-    pub fn fix(&self) -> u8 {
+    #[must_use]
+    pub const fn fix(&self) -> u8 {
         self.2
     }
 
     // Verifies if the device version is at least the specified version.
-    pub fn is_at_least(&self, major: u8, minor: u8, fix: u8) -> bool {
+    #[must_use]
+    pub const fn is_at_least(&self, major: u8, minor: u8, fix: u8) -> bool {
         (self.0 > major)
             || (self.0 == major && self.1 > minor)
             || (self.0 == major && self.1 == minor && self.2 >= fix)
     }
 
     /// Returns the serial number in decimal as specified by the ccTalk protocol.
-    pub fn as_number(&self) -> u32 {
+    #[must_use]
+    pub const fn as_number(&self) -> u32 {
         self.fix() as u32 + (256 * (self.minor() as u32)) + (65536 * (self.major() as u32))
     }
 }
@@ -107,6 +118,6 @@ mod test {
     fn as_decimal() {
         let code = SerialCode::new(255, 255, 255);
         // Should be 255 + 256 * 255 + 65536 * 255 which is 24 bits set to 1
-        assert_eq!(code.as_number(), 0xFFFFFF);
+        assert_eq!(code.as_number(), 0x00FF_FFFF);
     }
 }

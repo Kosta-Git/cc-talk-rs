@@ -40,8 +40,8 @@ where
     /// let buffer =  heapless::Vec::<u8, MAX_BLOCK_LENGTH>::new();
     /// let mut packet = Packet::new(buffer);
     /// ```
-    pub fn new(buffer: B) -> Self {
-        Packet { buffer }
+    pub const fn new(buffer: B) -> Self {
+        Self { buffer }
     }
 
     pub fn as_slice(&self) -> &[u8] {
@@ -64,6 +64,11 @@ where
         5 + self.get_data_length().unwrap_or(0) as usize
     }
 
+    /// Writes a byte at the specified position in the packet buffer.
+    ///
+    /// # Errors
+    ///
+    ///  Errors if the position is out of bounds.
     pub fn write_byte(&mut self, pos: usize, byte: u8) -> Result<(), PacketError> {
         let slice = self.buffer.as_mut();
         if pos < slice.len() {
@@ -74,6 +79,11 @@ where
         }
     }
 
+    /// Reads a byte at the specified position in the packet buffer.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
     pub fn read_byte(&self, pos: usize) -> Result<u8, PacketError> {
         let slice = self.buffer.as_ref();
         if pos < slice.len() {
@@ -84,19 +94,38 @@ where
     }
 
     /// Returns the ccTalk device destination address.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
     pub fn get_destination(&self) -> Result<u8, PacketError> {
         self.read_byte(DESTINATION_OFFSET)
     }
 
+    /// Sets the ccTalk device destination address.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
     pub fn set_destination(&mut self, destination: u8) -> Result<(), PacketError> {
         self.write_byte(DESTINATION_OFFSET, destination)
     }
 
     /// Returns the expected packet data length.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
     pub fn get_data_length(&self) -> Result<u8, PacketError> {
         self.read_byte(DATA_LENGTH_OFFSET)
     }
 
+    /// Sets the packet data length
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
+    /// Errors if the length exceeds the maximum allowed data length.
     pub fn set_data_length(&mut self, length: u8) -> Result<(), PacketError> {
         if length as usize + DATA_OFFSET < MAX_BLOCK_LENGTH {
             self.write_byte(DATA_LENGTH_OFFSET, length)
@@ -106,25 +135,49 @@ where
     }
 
     /// Returns the ccTalk device source address.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
     pub fn get_source(&self) -> Result<u8, PacketError> {
         self.read_byte(SOURCE_OFFSET)
     }
 
+    /// Sets the ccTalk device source address.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
     pub fn set_source(&mut self, source: u8) -> Result<(), PacketError> {
         self.write_byte(SOURCE_OFFSET, source)
     }
 
     /// Returns the ccTalk packet header.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
+    /// Errors if the header value is invalid.
     pub fn get_header(&self) -> Result<Header, PacketError> {
         let header_byte = self.read_byte(HEADER_OFFSET)?;
         Header::try_from(header_byte).map_err(|_| PacketError::InvalidHeader(header_byte))
     }
 
+    /// Sets the packet header
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
     pub fn set_header(&mut self, header: Header) -> Result<(), PacketError> {
         self.write_byte(HEADER_OFFSET, header as u8)
     }
 
     /// Returns the data payload of the packet.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the read is out of bounds.
+    /// Errors on data length mismatch.
     pub fn get_data(&self) -> Result<&[u8], PacketError> {
         let data_length = self.get_data_length()? as usize;
         let start = DATA_OFFSET;
@@ -137,6 +190,10 @@ where
     }
 
     /// Clears the current data payload of the packet and updates the data length to 0.
+    ///
+    /// # Errors
+    ///
+    /// Writes is out of bounds
     pub fn clear_data(&mut self) -> Result<(), PacketError> {
         let current_length = self.get_data_length()?;
 
@@ -153,6 +210,10 @@ where
 
     /// Clears existing data, updates the checksum offset to 0, and sets new data and updates the
     /// data length.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the data is too large.
     pub fn set_data(&mut self, data: &[u8]) -> Result<(), PacketError> {
         // Erase current data before setting new data
         self.clear_data()?;
@@ -178,12 +239,17 @@ where
             }
         }
 
+        #[allow(clippy::cast_possible_truncation)]
         self.set_data_length(length as u8)?;
 
         Ok(())
     }
 
     /// Returns the checksum of the packet.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
     pub fn get_checksum(&self) -> Result<u8, PacketError> {
         let data_length = self.get_data_length()? as usize;
         let checksum_offset = DATA_OFFSET + data_length;
@@ -195,7 +261,12 @@ where
     }
 
     /// Returns the offset where the checksum should be written.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the position is out of bounds.
     pub fn get_checksum_offset(&self) -> Result<u8, PacketError> {
+        #[allow(clippy::cast_possible_truncation)]
         Ok(DATA_OFFSET as u8 + self.get_data_length()?)
     }
 }
@@ -215,10 +286,10 @@ impl core::fmt::Display for PacketError {
             f,
             "{}",
             match self {
-                PacketError::OutOfBounds => "Index was out of bounds.",
-                PacketError::InvalidHeader(_) => "Invalid header value.",
-                PacketError::DataLengthMismatch => "The data length exceeds the buffer size",
-                PacketError::InvalidPacket => "The packet couldnt be validated",
+                Self::OutOfBounds => "Index was out of bounds.",
+                Self::InvalidHeader(_) => "Invalid header value.",
+                Self::DataLengthMismatch => "The data length exceeds the buffer size",
+                Self::InvalidPacket => "The packet couldnt be validated",
             }
         )
     }
@@ -227,6 +298,7 @@ impl core::fmt::Display for PacketError {
 /// ccTalk headers enum
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(clippy::doc_markdown)]
 pub enum Header {
     /// Transmitted data : <none>
     /// Received data : ACK
@@ -2621,163 +2693,164 @@ pub enum Header {
 impl TryFrom<u8> for Header {
     type Error = PacketError;
 
+    #[allow(clippy::too_many_lines)]
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            254 => Ok(Header::SimplePoll),
-            253 => Ok(Header::AddressPoll),
-            252 => Ok(Header::AddressClash),
-            251 => Ok(Header::AddressChange),
-            250 => Ok(Header::AddressRandom),
-            249 => Ok(Header::RequestPollingPriority),
-            248 => Ok(Header::RequestStatus),
-            247 => Ok(Header::RequestVariableSet),
-            246 => Ok(Header::RequestManufacturerId),
-            245 => Ok(Header::RequestEquipementCategoryId),
-            244 => Ok(Header::RequestProductCode),
-            243 => Ok(Header::RequestDatabaseVersion),
-            242 => Ok(Header::RequestSerialNumber),
-            241 => Ok(Header::RequestSoftwareRevision),
-            240 => Ok(Header::TestSolenoids),
-            239 => Ok(Header::OperateMotors),
-            238 => Ok(Header::TestOutputLines),
-            237 => Ok(Header::ReadInputLines),
-            236 => Ok(Header::ReadOptoStates),
-            235 => Ok(Header::ReadDHPubKey),
-            234 => Ok(Header::SendDHPubKey),
-            233 => Ok(Header::LatchOutputLines),
-            232 => Ok(Header::PerformSelfCheck),
-            231 => Ok(Header::ModifyInhibitStatus),
-            230 => Ok(Header::RequestInhibitStatus),
-            229 => Ok(Header::ReadBufferedCreditOrErrorCodes),
-            228 => Ok(Header::ModifyMasterInhibitStatus),
-            227 => Ok(Header::RequestMasterInhibitStatus),
-            226 => Ok(Header::RequestInsertionCounter),
-            225 => Ok(Header::RequestAcceptCounter),
-            224 => Ok(Header::RequestEncryptedProductId),
-            223 => Ok(Header::ModifyEncryptedInhibitAndOverrideRegisters),
-            222 => Ok(Header::ModifySorterOverrideStatus),
-            221 => Ok(Header::RequestSorterOverrideStatus),
-            220 => Ok(Header::ACMIEncryptedData),
-            219 => Ok(Header::EnterNewPinNumber),
-            218 => Ok(Header::EnterPinNumber),
-            217 => Ok(Header::RequestPayoutStatus),
-            216 => Ok(Header::RequestDataStorageAvailability),
-            215 => Ok(Header::ReadDataBlock),
-            214 => Ok(Header::WriteDataBlock),
-            213 => Ok(Header::RequestOptionFlags),
-            212 => Ok(Header::RequestCoinPosition),
-            211 => Ok(Header::PowerManagementControl),
-            210 => Ok(Header::ModifySorterPaths),
-            209 => Ok(Header::RequestSorterPaths),
-            208 => Ok(Header::ModifyPayoutAbsoluteCount),
-            207 => Ok(Header::RequestPayoutAbsoluteCount),
-            204 => Ok(Header::MeterControl),
-            203 => Ok(Header::DisplayControl),
-            202 => Ok(Header::TeachModeControl),
-            201 => Ok(Header::RequestTeachStatus),
-            200 => Ok(Header::ACMIUnencryptedProductId),
-            199 => Ok(Header::ConfigurationToEEPROM),
-            198 => Ok(Header::CountersToEEPROM),
-            197 => Ok(Header::CalculateROMChecksum),
-            196 => Ok(Header::RequestCreationDate),
-            195 => Ok(Header::RequestLastModificationDate),
-            194 => Ok(Header::RequestRejectCounter),
-            193 => Ok(Header::RequestFraudCounter),
-            192 => Ok(Header::RequestBuildCode),
-            191 => Ok(Header::KeypadControl),
-            189 => Ok(Header::ModifyDefaultSorterPath),
-            188 => Ok(Header::RequestDefaultSorterPath),
-            187 => Ok(Header::ModifyPayoutCapacity),
-            186 => Ok(Header::RequestPayoutCapacity),
-            185 => Ok(Header::ModifyCoinId),
-            184 => Ok(Header::RequestCoinId),
-            183 => Ok(Header::UploadWindowData),
-            182 => Ok(Header::DownloadCalibrationInfo),
-            181 => Ok(Header::ModifySecuritySetting),
-            180 => Ok(Header::RequestSecuritySetting),
-            179 => Ok(Header::ModifyBankSelect),
-            178 => Ok(Header::RequestBankSelect),
-            177 => Ok(Header::HandheldFunction),
-            176 => Ok(Header::RequestAlarmCounter),
-            175 => Ok(Header::ModifyPayoutFloat),
-            174 => Ok(Header::RequestPayoutFloat),
-            173 => Ok(Header::RequestThermistorReading),
-            172 => Ok(Header::EmergencyStop),
-            171 => Ok(Header::RequestHopperCoin),
-            170 => Ok(Header::RequestBaseYear),
-            169 => Ok(Header::RequestAddressMode),
-            168 => Ok(Header::RequestHopperDispenseCount),
-            167 => Ok(Header::DispenseHopperCoins),
-            166 => Ok(Header::RequestHopperStatus),
-            165 => Ok(Header::ModifyVariableSet),
-            164 => Ok(Header::EnableHopper),
-            163 => Ok(Header::TestHopper),
-            162 => Ok(Header::ModifyInhibitAndOverrideRegisters),
-            161 => Ok(Header::PumpRNG),
-            160 => Ok(Header::RequestCipherKey),
-            159 => Ok(Header::ReadBufferedBillEvents),
-            158 => Ok(Header::ModifyBillId),
-            157 => Ok(Header::RequestBillId),
-            156 => Ok(Header::RequestCountryScalingFactor),
-            155 => Ok(Header::RequestBillPosition),
-            154 => Ok(Header::RouteBill),
-            153 => Ok(Header::ModifyBillOperatingMode),
-            152 => Ok(Header::RequestBillOperatingMode),
-            151 => Ok(Header::TestLamps),
-            150 => Ok(Header::RequestIndividualAcceptCounter),
-            149 => Ok(Header::RequestIndividualErrorCounter),
-            148 => Ok(Header::ReadOptoVoltages),
-            147 => Ok(Header::PerformStackerCycle),
-            146 => Ok(Header::OperateBiDirectionalMotors),
-            145 => Ok(Header::RequestCurrencyRevision),
-            144 => Ok(Header::UploadBillTables),
-            143 => Ok(Header::BeginBillTableUpgrade),
-            142 => Ok(Header::FinishBillTableUpgrade),
-            141 => Ok(Header::RequestFirmwareUpgradeCapability),
-            140 => Ok(Header::UploadFirmware),
-            139 => Ok(Header::BeginFirmwareUpgrade),
-            138 => Ok(Header::FinishFirmwareUpgrade),
-            137 => Ok(Header::SwitchEncryptionMode),
-            136 => Ok(Header::StoreEncryptionMode),
-            135 => Ok(Header::SetAcceptLimit),
-            134 => Ok(Header::DispenseHopperValue),
-            133 => Ok(Header::RequestHopperPollingValue),
-            132 => Ok(Header::EmergencyStopValue),
-            131 => Ok(Header::RequestHopperCoinValue),
-            130 => Ok(Header::RequestIndexedHopperDispenseCount),
-            129 => Ok(Header::ReadBarCodeData),
-            128 => Ok(Header::RequestMoneyIn),
-            127 => Ok(Header::RequestMoneyOut),
-            126 => Ok(Header::ClearMoneyCounters),
-            125 => Ok(Header::PayMoneyOut),
-            124 => Ok(Header::VerifyMoneyOut),
-            123 => Ok(Header::RequestActivityRegister),
-            122 => Ok(Header::RequestErrorStatus),
-            121 => Ok(Header::PurgeHopper),
-            120 => Ok(Header::ModifyHopperBalance),
-            119 => Ok(Header::RequestHopperBalance),
-            118 => Ok(Header::ModifyCashBoxValue),
-            117 => Ok(Header::RequestCashBoxValue),
-            116 => Ok(Header::ModifyRealTimeClock),
-            115 => Ok(Header::RequestRealTimeClock),
-            114 => Ok(Header::RequestUsbId),
-            113 => Ok(Header::SwitchBaudRate),
-            112 => Ok(Header::ReadEncryptedEvents),
-            111 => Ok(Header::RequestEncryptionSupport),
-            110 => Ok(Header::SwitchEncryptionKey),
-            109 => Ok(Header::RequestEncryptedHopperStatus),
-            108 => Ok(Header::RequestEncryptedMonetaryId),
-            107 => Ok(Header::OperateEscrow),
-            106 => Ok(Header::RequestEscrowStatus),
-            105 => Ok(Header::DataStream),
-            104 => Ok(Header::RequestServiceStatus),
-            6 => Ok(Header::Busy),
-            5 => Ok(Header::NACK),
-            4 => Ok(Header::RequestCommsRevision),
-            3 => Ok(Header::ClearCommsStatusVariable),
-            2 => Ok(Header::RequestCommsStatusVariables),
-            1 => Ok(Header::ResetDevice),
-            0 => Ok(Header::Reply),
+            254 => Ok(Self::SimplePoll),
+            253 => Ok(Self::AddressPoll),
+            252 => Ok(Self::AddressClash),
+            251 => Ok(Self::AddressChange),
+            250 => Ok(Self::AddressRandom),
+            249 => Ok(Self::RequestPollingPriority),
+            248 => Ok(Self::RequestStatus),
+            247 => Ok(Self::RequestVariableSet),
+            246 => Ok(Self::RequestManufacturerId),
+            245 => Ok(Self::RequestEquipementCategoryId),
+            244 => Ok(Self::RequestProductCode),
+            243 => Ok(Self::RequestDatabaseVersion),
+            242 => Ok(Self::RequestSerialNumber),
+            241 => Ok(Self::RequestSoftwareRevision),
+            240 => Ok(Self::TestSolenoids),
+            239 => Ok(Self::OperateMotors),
+            238 => Ok(Self::TestOutputLines),
+            237 => Ok(Self::ReadInputLines),
+            236 => Ok(Self::ReadOptoStates),
+            235 => Ok(Self::ReadDHPubKey),
+            234 => Ok(Self::SendDHPubKey),
+            233 => Ok(Self::LatchOutputLines),
+            232 => Ok(Self::PerformSelfCheck),
+            231 => Ok(Self::ModifyInhibitStatus),
+            230 => Ok(Self::RequestInhibitStatus),
+            229 => Ok(Self::ReadBufferedCreditOrErrorCodes),
+            228 => Ok(Self::ModifyMasterInhibitStatus),
+            227 => Ok(Self::RequestMasterInhibitStatus),
+            226 => Ok(Self::RequestInsertionCounter),
+            225 => Ok(Self::RequestAcceptCounter),
+            224 => Ok(Self::RequestEncryptedProductId),
+            223 => Ok(Self::ModifyEncryptedInhibitAndOverrideRegisters),
+            222 => Ok(Self::ModifySorterOverrideStatus),
+            221 => Ok(Self::RequestSorterOverrideStatus),
+            220 => Ok(Self::ACMIEncryptedData),
+            219 => Ok(Self::EnterNewPinNumber),
+            218 => Ok(Self::EnterPinNumber),
+            217 => Ok(Self::RequestPayoutStatus),
+            216 => Ok(Self::RequestDataStorageAvailability),
+            215 => Ok(Self::ReadDataBlock),
+            214 => Ok(Self::WriteDataBlock),
+            213 => Ok(Self::RequestOptionFlags),
+            212 => Ok(Self::RequestCoinPosition),
+            211 => Ok(Self::PowerManagementControl),
+            210 => Ok(Self::ModifySorterPaths),
+            209 => Ok(Self::RequestSorterPaths),
+            208 => Ok(Self::ModifyPayoutAbsoluteCount),
+            207 => Ok(Self::RequestPayoutAbsoluteCount),
+            204 => Ok(Self::MeterControl),
+            203 => Ok(Self::DisplayControl),
+            202 => Ok(Self::TeachModeControl),
+            201 => Ok(Self::RequestTeachStatus),
+            200 => Ok(Self::ACMIUnencryptedProductId),
+            199 => Ok(Self::ConfigurationToEEPROM),
+            198 => Ok(Self::CountersToEEPROM),
+            197 => Ok(Self::CalculateROMChecksum),
+            196 => Ok(Self::RequestCreationDate),
+            195 => Ok(Self::RequestLastModificationDate),
+            194 => Ok(Self::RequestRejectCounter),
+            193 => Ok(Self::RequestFraudCounter),
+            192 => Ok(Self::RequestBuildCode),
+            191 => Ok(Self::KeypadControl),
+            189 => Ok(Self::ModifyDefaultSorterPath),
+            188 => Ok(Self::RequestDefaultSorterPath),
+            187 => Ok(Self::ModifyPayoutCapacity),
+            186 => Ok(Self::RequestPayoutCapacity),
+            185 => Ok(Self::ModifyCoinId),
+            184 => Ok(Self::RequestCoinId),
+            183 => Ok(Self::UploadWindowData),
+            182 => Ok(Self::DownloadCalibrationInfo),
+            181 => Ok(Self::ModifySecuritySetting),
+            180 => Ok(Self::RequestSecuritySetting),
+            179 => Ok(Self::ModifyBankSelect),
+            178 => Ok(Self::RequestBankSelect),
+            177 => Ok(Self::HandheldFunction),
+            176 => Ok(Self::RequestAlarmCounter),
+            175 => Ok(Self::ModifyPayoutFloat),
+            174 => Ok(Self::RequestPayoutFloat),
+            173 => Ok(Self::RequestThermistorReading),
+            172 => Ok(Self::EmergencyStop),
+            171 => Ok(Self::RequestHopperCoin),
+            170 => Ok(Self::RequestBaseYear),
+            169 => Ok(Self::RequestAddressMode),
+            168 => Ok(Self::RequestHopperDispenseCount),
+            167 => Ok(Self::DispenseHopperCoins),
+            166 => Ok(Self::RequestHopperStatus),
+            165 => Ok(Self::ModifyVariableSet),
+            164 => Ok(Self::EnableHopper),
+            163 => Ok(Self::TestHopper),
+            162 => Ok(Self::ModifyInhibitAndOverrideRegisters),
+            161 => Ok(Self::PumpRNG),
+            160 => Ok(Self::RequestCipherKey),
+            159 => Ok(Self::ReadBufferedBillEvents),
+            158 => Ok(Self::ModifyBillId),
+            157 => Ok(Self::RequestBillId),
+            156 => Ok(Self::RequestCountryScalingFactor),
+            155 => Ok(Self::RequestBillPosition),
+            154 => Ok(Self::RouteBill),
+            153 => Ok(Self::ModifyBillOperatingMode),
+            152 => Ok(Self::RequestBillOperatingMode),
+            151 => Ok(Self::TestLamps),
+            150 => Ok(Self::RequestIndividualAcceptCounter),
+            149 => Ok(Self::RequestIndividualErrorCounter),
+            148 => Ok(Self::ReadOptoVoltages),
+            147 => Ok(Self::PerformStackerCycle),
+            146 => Ok(Self::OperateBiDirectionalMotors),
+            145 => Ok(Self::RequestCurrencyRevision),
+            144 => Ok(Self::UploadBillTables),
+            143 => Ok(Self::BeginBillTableUpgrade),
+            142 => Ok(Self::FinishBillTableUpgrade),
+            141 => Ok(Self::RequestFirmwareUpgradeCapability),
+            140 => Ok(Self::UploadFirmware),
+            139 => Ok(Self::BeginFirmwareUpgrade),
+            138 => Ok(Self::FinishFirmwareUpgrade),
+            137 => Ok(Self::SwitchEncryptionMode),
+            136 => Ok(Self::StoreEncryptionMode),
+            135 => Ok(Self::SetAcceptLimit),
+            134 => Ok(Self::DispenseHopperValue),
+            133 => Ok(Self::RequestHopperPollingValue),
+            132 => Ok(Self::EmergencyStopValue),
+            131 => Ok(Self::RequestHopperCoinValue),
+            130 => Ok(Self::RequestIndexedHopperDispenseCount),
+            129 => Ok(Self::ReadBarCodeData),
+            128 => Ok(Self::RequestMoneyIn),
+            127 => Ok(Self::RequestMoneyOut),
+            126 => Ok(Self::ClearMoneyCounters),
+            125 => Ok(Self::PayMoneyOut),
+            124 => Ok(Self::VerifyMoneyOut),
+            123 => Ok(Self::RequestActivityRegister),
+            122 => Ok(Self::RequestErrorStatus),
+            121 => Ok(Self::PurgeHopper),
+            120 => Ok(Self::ModifyHopperBalance),
+            119 => Ok(Self::RequestHopperBalance),
+            118 => Ok(Self::ModifyCashBoxValue),
+            117 => Ok(Self::RequestCashBoxValue),
+            116 => Ok(Self::ModifyRealTimeClock),
+            115 => Ok(Self::RequestRealTimeClock),
+            114 => Ok(Self::RequestUsbId),
+            113 => Ok(Self::SwitchBaudRate),
+            112 => Ok(Self::ReadEncryptedEvents),
+            111 => Ok(Self::RequestEncryptionSupport),
+            110 => Ok(Self::SwitchEncryptionKey),
+            109 => Ok(Self::RequestEncryptedHopperStatus),
+            108 => Ok(Self::RequestEncryptedMonetaryId),
+            107 => Ok(Self::OperateEscrow),
+            106 => Ok(Self::RequestEscrowStatus),
+            105 => Ok(Self::DataStream),
+            104 => Ok(Self::RequestServiceStatus),
+            6 => Ok(Self::Busy),
+            5 => Ok(Self::NACK),
+            4 => Ok(Self::RequestCommsRevision),
+            3 => Ok(Self::ClearCommsStatusVariable),
+            2 => Ok(Self::RequestCommsStatusVariables),
+            1 => Ok(Self::ResetDevice),
+            0 => Ok(Self::Reply),
             _ => Err(PacketError::InvalidHeader(value)),
         }
     }

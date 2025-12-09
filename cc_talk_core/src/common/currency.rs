@@ -13,14 +13,14 @@ pub enum Factor {
 }
 
 impl Factor {
-    pub fn multiplier(&self) -> f64 {
+    #[must_use]
+    pub const fn multiplier(&self) -> f64 {
         match self {
-            Factor::Micro => 0.001,
-            Factor::None => 1.0,
-            Factor::Dot => 1.0,
-            Factor::Kilo => 1000.0,
-            Factor::Mega => 1_000_000.0,
-            Factor::Giga => 1_000_000_000.0,
+            Self::Micro => 0.001,
+            Self::None | Self::Dot => 1.0,
+            Self::Kilo => 1000.0,
+            Self::Mega => 1_000_000.0,
+            Self::Giga => 1_000_000_000.0,
         }
     }
 }
@@ -28,12 +28,12 @@ impl Factor {
 impl From<char> for Factor {
     fn from(value: char) -> Self {
         match value {
-            'm' => Factor::Micro,
-            '.' => Factor::Dot,
-            'K' => Factor::Kilo,
-            'M' => Factor::Mega,
-            'G' => Factor::Giga,
-            _ => Factor::None,
+            'm' => Self::Micro,
+            '.' => Self::Dot,
+            'K' => Self::Kilo,
+            'M' => Self::Mega,
+            'G' => Self::Giga,
+            _ => Self::None,
         }
     }
 }
@@ -59,7 +59,14 @@ pub enum CurrencyToken {
 }
 
 impl CurrencyToken {
-    pub fn build(value_string: &str) -> Result<CurrencyToken, CurrencyTokenError> {
+    /// Creates a currency or token from a value string.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the value string is too small or if the coin is not supported by the device.
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss)]
+    pub fn build(value_string: &str) -> Result<Self, CurrencyTokenError> {
         if value_string.len() < 6 {
             return Err(CurrencyTokenError::ValueStringTooSmall);
         }
@@ -72,7 +79,7 @@ impl CurrencyToken {
         }
 
         if country_code == "TK" {
-            return Ok(CurrencyToken::Token);
+            return Ok(Self::Token);
         }
 
         let chars: Vec<char, 16> = value_string.chars().collect();
@@ -91,7 +98,7 @@ impl CurrencyToken {
         // Calculate numeric value from digits
         let mut numeric_value = 0u32;
         for &digit in &digits {
-            numeric_value = numeric_value * 10 + digit as u32;
+            numeric_value = numeric_value * 10 + u32::from(digit);
         }
 
         // Find factor (last non-digit character in the value part)
@@ -108,10 +115,10 @@ impl CurrencyToken {
             // TODO: Find a solution for micro factors that works without std
             #[cfg(feature = "std")]
             Factor::Micro => {
-                let float_result = (numeric_value as f64) * factor.multiplier();
+                let float_result = f64::from(numeric_value) * factor.multiplier();
 
                 if value_string.len() == 7 {
-                    (float_result * 10_f64.powi(decimals as i32)) as u32
+                    (float_result * 10_f64.powi(i32::from(decimals))) as u32
                 } else {
                     float_result as u32
                 }
@@ -123,7 +130,7 @@ impl CurrencyToken {
 
                 if value_string.len() == 7 {
                     // Bill: multiply by 10^decimals to get smallest units
-                    factored_value * 10u32.pow(decimals as u32)
+                    factored_value * 10u32.pow(u32::from(decimals))
                 } else {
                     // Coin: value is already in appropriate units
                     factored_value
@@ -131,7 +138,7 @@ impl CurrencyToken {
             }
         };
 
-        Ok(CurrencyToken::Currency(CurrencyValue {
+        Ok(Self::Currency(CurrencyValue {
             country_code: heapless::String::from_str(country_code)
                 .map_err(|_| CurrencyTokenError::InvalidFormat)?,
             factor,
@@ -153,25 +160,31 @@ pub struct CurrencyValue {
 
 impl CurrencyValue {
     /// Get the monetary value as a float
-    #[cfg(feature = "std")] // TODO: Find a solution for no_std
+    #[cfg(feature = "std")]
+    #[must_use]
     pub fn monetary_value(&self) -> f64 {
-        self.value as f64 / 10_f64.powi(self.decimals as i32)
+        // TODO: Find a solution for no_std
+        f64::from(self.value) / 10_f64.powi(i32::from(self.decimals))
     }
 
     /// Get the value in smallest currency units
-    pub fn smallest_unit_value(&self) -> u32 {
+    #[must_use]
+    pub const fn smallest_unit_value(&self) -> u32 {
         self.value
     }
 
+    #[must_use]
     pub fn country_code(&self) -> &str {
         &self.country_code
     }
 
-    pub fn factor(&self) -> Factor {
+    #[must_use]
+    pub const fn factor(&self) -> Factor {
         self.factor
     }
 
-    pub fn decimals(&self) -> u8 {
+    #[must_use]
+    pub const fn decimals(&self) -> u8 {
         self.decimals
     }
 }
@@ -200,7 +213,7 @@ mod test {
         let answers = [1, 2, 5, 10, 20, 50, 100, 200];
 
         for (index, coin) in coins.iter().enumerate() {
-            let token = CurrencyToken::build(coin).unwrap();
+            let token = CurrencyToken::build(coin).expect("should build currency token");
             match token {
                 CurrencyToken::Currency(currency) => {
                     assert_eq!(currency.country_code(), "EU");
@@ -217,10 +230,10 @@ mod test {
                     assert_eq!(currency.smallest_unit_value(), expected_value);
 
                     // Check monetary value
-                    let expected_monetary = expected_value as f64 / 100.0;
-                    assert_eq!(currency.monetary_value(), expected_monetary);
+                    let expected_monetary = f64::from(expected_value) / 100.0;
+                    assert!((currency.monetary_value() - expected_monetary).abs() < 0.01);
                 }
-                _ => panic!("Expected currency, got {:?}", token),
+                CurrencyToken::Token => panic!("Expected currency, got {:?}", token),
             }
         }
     }
@@ -235,7 +248,7 @@ mod test {
         let answers = [500, 1000, 2000, 5000, 10000, 20000, 50000];
 
         for (index, bill) in bills.iter().enumerate() {
-            let token = CurrencyToken::build(bill).unwrap();
+            let token = CurrencyToken::build(bill).expect("should build currency token");
             match token {
                 CurrencyToken::Currency(currency) => {
                     assert_eq!(currency.country_code(), "EU");
@@ -244,10 +257,10 @@ mod test {
                     assert_eq!(currency.smallest_unit_value(), answers[index]);
 
                     // Check monetary value
-                    let expected_monetary = answers[index] as f64 / 100.0;
-                    assert_eq!(currency.monetary_value(), expected_monetary);
+                    let expected_monetary = f64::from(answers[index]) / 100.0;
+                    assert!((currency.monetary_value() - expected_monetary).abs() < 0.01);
                 }
-                _ => panic!("Expected currency, got {:?}", token),
+                CurrencyToken::Token => panic!("Expected currency, got {:?}", token),
             }
         }
     }
@@ -256,25 +269,25 @@ mod test {
     #[cfg(feature = "std")] // Temporary until we find a no_std solution
     fn test_factors() {
         // Test Kilo factor
-        let result = CurrencyToken::build("US001K").unwrap();
+        let result = CurrencyToken::build("US001K").expect("should build currency token");
         match result {
             CurrencyToken::Currency(currency) => {
                 assert_eq!(currency.factor(), Factor::Kilo);
                 assert_eq!(currency.smallest_unit_value(), 1000);
-                assert_eq!(currency.monetary_value(), 10.0);
+                assert!((currency.monetary_value() - 10.0).abs() < 0.01);
             }
-            _ => panic!("Expected currency"),
+            CurrencyToken::Token => panic!("Expected currency"),
         }
 
         // Test Micro factor
-        let result = CurrencyToken::build("EU500m").unwrap();
+        let result = CurrencyToken::build("EU500m").expect("should build currency token");
         match result {
             CurrencyToken::Currency(currency) => {
                 assert_eq!(currency.factor(), Factor::Micro);
                 assert_eq!(currency.smallest_unit_value(), 0); // less than 1cent
-                assert_eq!(currency.monetary_value(), 0.0);
+                assert!((currency.monetary_value() - 0.0).abs() < 0.01);
             }
-            _ => panic!("Expected currency"),
+            CurrencyToken::Token => panic!("Expected currency"),
         }
     }
 
@@ -282,21 +295,21 @@ mod test {
     #[cfg(feature = "std")] // Temporary until we find a no_std solution
     fn test_japanese_yen() {
         // Test 0 decimal currency
-        let result = CurrencyToken::build("JP100A").unwrap();
+        let result = CurrencyToken::build("JP100A").expect("should build currency token");
         match result {
             CurrencyToken::Currency(currency) => {
                 assert_eq!(currency.country_code(), "JP");
                 assert_eq!(currency.decimals(), 0);
                 assert_eq!(currency.smallest_unit_value(), 100);
-                assert_eq!(currency.monetary_value(), 100.0);
+                assert!((currency.monetary_value() - 100.0).abs() < 0.01);
             }
-            _ => panic!("Expected currency"),
+            CurrencyToken::Token => panic!("Expected currency"),
         }
     }
 
     #[test]
     fn test_token() {
-        let result = CurrencyToken::build("TK001A").unwrap();
+        let result = CurrencyToken::build("TK001A").expect("should build currency token");
         assert_eq!(result, CurrencyToken::Token);
     }
 
@@ -316,14 +329,14 @@ mod test {
     #[test]
     #[cfg(feature = "std")] // Temporary until we find a no_std solution
     fn test_decimal_point_parsing() {
-        let result = CurrencyToken::build("EU.50A").unwrap();
+        let result = CurrencyToken::build("EU.50A").expect("should build currency token");
         match result {
             CurrencyToken::Currency(currency) => {
                 assert_eq!(currency.factor(), Factor::Dot);
                 assert_eq!(currency.smallest_unit_value(), 50);
-                assert_eq!(currency.monetary_value(), 0.50);
+                assert!((currency.monetary_value() - 0.50).abs() < 0.01);
             }
-            _ => panic!("Expected currency"),
+            CurrencyToken::Token => panic!("Expected currency"),
         }
     }
 
@@ -331,69 +344,69 @@ mod test {
     #[cfg(feature = "std")] // Temporary until we find a no_std solution
     fn test_bill_vs_coin_detection() {
         // 6-character string should be treated as coin
-        let coin = CurrencyToken::build("US100A").unwrap();
+        let coin = CurrencyToken::build("US100A").expect("should build currency token");
         match coin {
             CurrencyToken::Currency(currency) => {
                 assert_eq!(currency.smallest_unit_value(), 100);
-                assert_eq!(currency.monetary_value(), 1.0);
+                assert!((currency.monetary_value() - 1.0).abs() < 0.01);
             }
-            _ => panic!("Expected currency"),
+            CurrencyToken::Token => panic!("Expected currency"),
         }
 
         // 7-character string should be treated as bill
-        let bill = CurrencyToken::build("US0100A").unwrap();
+        let bill = CurrencyToken::build("US0100A").expect("should build currency token");
         match bill {
             CurrencyToken::Currency(currency) => {
                 assert_eq!(currency.smallest_unit_value(), 10000);
-                assert_eq!(currency.monetary_value(), 100.0);
+                assert!((currency.monetary_value() - 100.0).abs() < 0.01);
             }
-            _ => panic!("Expected currency"),
+            CurrencyToken::Token => panic!("Expected currency"),
         }
     }
 
     #[test]
     #[cfg(feature = "std")] // Temporary until we find a no_std solution
     fn test_additional_factor_cases() {
-        let result = CurrencyToken::build("US001M").unwrap();
+        let result = CurrencyToken::build("US001M").expect("should build currency token");
         match result {
             CurrencyToken::Currency(currency) => {
                 assert_eq!(currency.factor(), Factor::Mega);
                 assert_eq!(currency.smallest_unit_value(), 1_000_000);
-                assert_eq!(currency.monetary_value(), 10_000.0);
+                assert!((currency.monetary_value() - 10_000.0).abs() < 0.01);
             }
-            _ => panic!("Expected currency"),
+            CurrencyToken::Token => panic!("Expected currency"),
         }
 
-        let result = CurrencyToken::build("US001G").unwrap();
+        let result = CurrencyToken::build("US001G").expect("should build currency token");
         match result {
             CurrencyToken::Currency(currency) => {
                 assert_eq!(currency.factor(), Factor::Giga);
                 assert_eq!(currency.smallest_unit_value(), 1_000_000_000);
-                assert_eq!(currency.monetary_value(), 10_000_000.0);
+                assert!((currency.monetary_value() - 10_000_000.0).abs() < 0.01);
             }
-            _ => panic!("Expected currency"),
+            CurrencyToken::Token => panic!("Expected currency"),
         }
     }
 
     #[test]
     #[cfg(feature = "std")] // Temporary until we find a no_std solution
     fn test_edge_cases() {
-        let result = CurrencyToken::build("US000A").unwrap();
+        let result = CurrencyToken::build("US000A").expect("should build currency token");
         match result {
             CurrencyToken::Currency(currency) => {
                 assert_eq!(currency.smallest_unit_value(), 0);
-                assert_eq!(currency.monetary_value(), 0.0);
+                assert!((currency.monetary_value() - 0.0).abs() < 0.01);
             }
-            _ => panic!("Expected currency"),
+            CurrencyToken::Token => panic!("Expected currency"),
         }
 
-        let result = CurrencyToken::build("US999A").unwrap();
+        let result = CurrencyToken::build("US999A").expect("should build currency token");
         match result {
             CurrencyToken::Currency(currency) => {
                 assert_eq!(currency.smallest_unit_value(), 999);
-                assert_eq!(currency.monetary_value(), 9.99);
+                assert!((currency.monetary_value() - 9.99).abs() < 0.01);
             }
-            _ => panic!("Expected currency"),
+            CurrencyToken::Token => panic!("Expected currency"),
         }
     }
 }

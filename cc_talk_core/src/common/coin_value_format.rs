@@ -9,14 +9,14 @@ pub enum CoinType {
 impl From<u8> for CoinType {
     fn from(value: u8) -> Self {
         match value {
-            0 | 128 => CoinType::None,
-            255 => CoinType::Token,
-            value if (value & 0b10000000) != 0 => {
-                let data_value = (value & 0b01111111) as u16;
+            0 | 128 => Self::None,
+            255 => Self::Token,
+            value if (value & 0b1000_0000) != 0 => {
+                let data_value = u16::from(value & 0b0111_1111);
                 let coin_value = data_value * 10;
-                CoinType::Coin(coin_value)
+                Self::Coin(coin_value)
             }
-            value => CoinType::Coin(value as u16),
+            value => Self::Coin(u16::from(value)),
         }
     }
 }
@@ -111,7 +111,7 @@ mod tests {
             if i == 0 {
                 assert_eq!(CoinType::from(i), CoinType::None);
             } else {
-                assert_eq!(CoinType::from(i), CoinType::Coin(i as u16));
+                assert_eq!(CoinType::from(i), CoinType::Coin(u16::from(i)));
             }
         }
 
@@ -120,7 +120,7 @@ mod tests {
 
         // Values with multiplier bit (129-254)
         for i in 129..=254 {
-            let data_value = (i & 0b01111111) as u16;
+            let data_value = u16::from(i & 0b0111_1111);
             let expected_value = data_value * 10;
             assert_eq!(CoinType::from(i), CoinType::Coin(expected_value));
         }

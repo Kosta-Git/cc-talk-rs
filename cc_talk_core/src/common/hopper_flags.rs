@@ -108,7 +108,9 @@ impl HopperFlag {
     /// # Panics
     ///
     /// It will panic if `register_id` is not 1, 2, or 3.
-    pub fn has_flag(&self, register: u8, register_id: u8) -> bool {
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
+    pub const fn has_flag(&self, register: u8, register_id: u8) -> bool {
         let register_mask = match register_id {
             1 => REGISTER_1_MASK,
             2 => REGISTER_2_MASK,
@@ -125,29 +127,29 @@ impl HopperFlag {
         (flag_value & register) == flag_value
     }
 
-    const fn all_flags() -> [HopperFlag; 21] {
+    const fn all_flags() -> [Self; 21] {
         [
-            HopperFlag::AbsoluteMaximumCurrentExceeded,
-            HopperFlag::PayoutTimeoutOccurred,
-            HopperFlag::MotorReversedToClearJam,
-            HopperFlag::OptoFraudPathBlockedDuringIdle,
-            HopperFlag::OptoFraudShortCircuitDuringIdle,
-            HopperFlag::OptoBlockedPermanentlyDuringPayout,
-            HopperFlag::PowerUpDetected,
-            HopperFlag::PayoutDisabled,
-            HopperFlag::OptoFraudPathBlockedDuringPayout,
-            HopperFlag::SingleCoinPayoutMode,
-            HopperFlag::UseOtherHopper,
-            HopperFlag::OptoFraudAttemptFinger,
-            HopperFlag::MotorReverseLimitReached,
-            HopperFlag::InductiveCoilFault,
-            HopperFlag::NVMemoryChecksumError,
-            HopperFlag::PinNumberMechanism,
-            HopperFlag::PowerDownDuringPayout,
-            HopperFlag::UnknownCoinTypePaid,
-            HopperFlag::PinNumberIncorrect,
-            HopperFlag::IncorrectCipherKey,
-            HopperFlag::EncryptionEnabled,
+            Self::AbsoluteMaximumCurrentExceeded,
+            Self::PayoutTimeoutOccurred,
+            Self::MotorReversedToClearJam,
+            Self::OptoFraudPathBlockedDuringIdle,
+            Self::OptoFraudShortCircuitDuringIdle,
+            Self::OptoBlockedPermanentlyDuringPayout,
+            Self::PowerUpDetected,
+            Self::PayoutDisabled,
+            Self::OptoFraudPathBlockedDuringPayout,
+            Self::SingleCoinPayoutMode,
+            Self::UseOtherHopper,
+            Self::OptoFraudAttemptFinger,
+            Self::MotorReverseLimitReached,
+            Self::InductiveCoilFault,
+            Self::NVMemoryChecksumError,
+            Self::PinNumberMechanism,
+            Self::PowerDownDuringPayout,
+            Self::UnknownCoinTypePaid,
+            Self::PinNumberIncorrect,
+            Self::IncorrectCipherKey,
+            Self::EncryptionEnabled,
         ]
     }
 
@@ -175,7 +177,9 @@ impl HopperFlag {
     /// # Panics
     ///
     /// It will panic if the length of `registers` is not 0, 1, 2, or 3.
-    pub fn parse_hopper_flags_heapless(registers: &[u8]) -> heapless::Vec<HopperFlag, 21> {
+    #[allow(clippy::cast_possible_truncation)]
+    #[must_use]
+    pub fn parse_hopper_flags_heapless(registers: &[u8]) -> heapless::Vec<Self, 21> {
         assert!(
             (0..=3).contains(&registers.len()),
             "registers must be of length 0, 1, 2, or 3"
@@ -199,7 +203,7 @@ impl HopperFlag {
                         _ => unreachable!(),
                     };
 
-                    if let Some(flag) = HopperFlag::u16_to_hopper_flag(flag_value) {
+                    if let Some(flag) = Self::u16_to_hopper_flag(flag_value) {
                         let _ = flags.push(flag);
                     }
                 }
@@ -234,7 +238,9 @@ impl HopperFlag {
     ///
     /// It will panic if the length of `registers` is not 0, 1, 2, or 3.
     #[cfg(feature = "std")]
-    pub fn parse_hopper_flags_std(registers: &[u8]) -> std::vec::Vec<HopperFlag> {
+    #[allow(clippy::cast_possible_truncation)]
+    #[must_use]
+    pub fn parse_hopper_flags_std(registers: &[u8]) -> std::vec::Vec<Self> {
         assert!(
             (0..=3).contains(&registers.len()),
             "registers must be of length 0, 1, 2, or 3"
@@ -258,7 +264,7 @@ impl HopperFlag {
                         _ => unreachable!(),
                     };
 
-                    if let Some(flag) = HopperFlag::u16_to_hopper_flag(flag_value) {
+                    if let Some(flag) = Self::u16_to_hopper_flag(flag_value) {
                         flags.push(flag);
                     }
                 }
@@ -291,7 +297,9 @@ impl HopperFlag {
     /// # Panics
     ///
     /// It will panic if the length of `registers` is not 0, 1, 2, or 3.
-    pub fn parse_hopper_flags_array(registers: &[u8]) -> ([Option<HopperFlag>; 21], usize) {
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn parse_hopper_flags_array(registers: &[u8]) -> ([Option<Self>; 21], usize) {
         assert!(
             (0..=3).contains(&registers.len()),
             "registers must be of length 0, 1, 2, or 3"
@@ -316,7 +324,7 @@ impl HopperFlag {
                         _ => continue,
                     };
 
-                    if let Some(flag) = HopperFlag::u16_to_hopper_flag(flag_value) {
+                    if let Some(flag) = Self::u16_to_hopper_flag(flag_value) {
                         flags[count] = Some(flag);
                         count += 1;
                     }
@@ -327,29 +335,29 @@ impl HopperFlag {
         (flags, count)
     }
 
-    fn u16_to_hopper_flag(value: u16) -> Option<HopperFlag> {
+    const fn u16_to_hopper_flag(value: u16) -> Option<Self> {
         match value {
-            1 => Some(HopperFlag::AbsoluteMaximumCurrentExceeded),
-            2 => Some(HopperFlag::PayoutTimeoutOccurred),
-            4 => Some(HopperFlag::MotorReversedToClearJam),
-            8 => Some(HopperFlag::OptoFraudPathBlockedDuringIdle),
-            16 => Some(HopperFlag::OptoFraudShortCircuitDuringIdle),
-            32 => Some(HopperFlag::OptoBlockedPermanentlyDuringPayout),
-            64 => Some(HopperFlag::PowerUpDetected),
-            128 => Some(HopperFlag::PayoutDisabled),
-            257 => Some(HopperFlag::OptoFraudPathBlockedDuringPayout),
-            258 => Some(HopperFlag::SingleCoinPayoutMode),
-            260 => Some(HopperFlag::UseOtherHopper),
-            264 => Some(HopperFlag::OptoFraudAttemptFinger),
-            272 => Some(HopperFlag::MotorReverseLimitReached),
-            288 => Some(HopperFlag::InductiveCoilFault),
-            320 => Some(HopperFlag::NVMemoryChecksumError),
-            384 => Some(HopperFlag::PinNumberMechanism),
-            513 => Some(HopperFlag::PowerDownDuringPayout),
-            514 => Some(HopperFlag::UnknownCoinTypePaid),
-            516 => Some(HopperFlag::PinNumberIncorrect),
-            520 => Some(HopperFlag::IncorrectCipherKey),
-            528 => Some(HopperFlag::EncryptionEnabled),
+            1 => Some(Self::AbsoluteMaximumCurrentExceeded),
+            2 => Some(Self::PayoutTimeoutOccurred),
+            4 => Some(Self::MotorReversedToClearJam),
+            8 => Some(Self::OptoFraudPathBlockedDuringIdle),
+            16 => Some(Self::OptoFraudShortCircuitDuringIdle),
+            32 => Some(Self::OptoBlockedPermanentlyDuringPayout),
+            64 => Some(Self::PowerUpDetected),
+            128 => Some(Self::PayoutDisabled),
+            257 => Some(Self::OptoFraudPathBlockedDuringPayout),
+            258 => Some(Self::SingleCoinPayoutMode),
+            260 => Some(Self::UseOtherHopper),
+            264 => Some(Self::OptoFraudAttemptFinger),
+            272 => Some(Self::MotorReverseLimitReached),
+            288 => Some(Self::InductiveCoilFault),
+            320 => Some(Self::NVMemoryChecksumError),
+            384 => Some(Self::PinNumberMechanism),
+            513 => Some(Self::PowerDownDuringPayout),
+            514 => Some(Self::UnknownCoinTypePaid),
+            516 => Some(Self::PinNumberIncorrect),
+            520 => Some(Self::IncorrectCipherKey),
+            528 => Some(Self::EncryptionEnabled),
             _ => None,
         }
     }
@@ -362,37 +370,37 @@ mod tests {
     #[test]
     fn test_has_flag_register_1() {
         let flag = HopperFlag::AbsoluteMaximumCurrentExceeded;
-        assert!(flag.has_flag(0b00000001, 1));
-        assert!(!flag.has_flag(0b00000010, 1));
-        assert!(!flag.has_flag(0b00000001, 2));
+        assert!(flag.has_flag(0b0000_0001, 1));
+        assert!(!flag.has_flag(0b0000_0010, 1));
+        assert!(!flag.has_flag(0b0000_0001, 2));
     }
 
     #[test]
     fn test_has_flag_register_2() {
         let flag = HopperFlag::SingleCoinPayoutMode;
-        assert!(flag.has_flag(0b00000010, 2)); // Bit 1 set in register 2
-        assert!(!flag.has_flag(0b00000001, 2)); // Bit 0 set, but flag is bit 1
-        assert!(!flag.has_flag(0b00000010, 1)); // Wrong register
+        assert!(flag.has_flag(0b0000_0010, 2)); // Bit 1 set in register 2
+        assert!(!flag.has_flag(0b0000_0001, 2)); // Bit 0 set, but flag is bit 1
+        assert!(!flag.has_flag(0b0000_0010, 1)); // Wrong register
     }
 
     #[test]
     fn test_has_flag_register_3() {
         let flag = HopperFlag::EncryptionEnabled;
-        assert!(flag.has_flag(0b00010000, 3)); // Bit 4 set in register 3
-        assert!(!flag.has_flag(0b00001000, 3)); // Bit 3 set, but flag is bit 4
-        assert!(!flag.has_flag(0b00010000, 1)); // Wrong register
+        assert!(flag.has_flag(0b0001_0000, 3)); // Bit 4 set in register 3
+        assert!(!flag.has_flag(0b0000_1000, 3)); // Bit 3 set, but flag is bit 4
+        assert!(!flag.has_flag(0b0001_0000, 1)); // Wrong register
     }
 
     #[test]
     #[should_panic(expected = "register_id must be 1, 2, or 3")]
     fn test_has_flag_invalid_register() {
         let flag = HopperFlag::AbsoluteMaximumCurrentExceeded;
-        flag.has_flag(0b00000001, 4); // Invalid register
+        let _ = flag.has_flag(0b0000_0001, 4); // Invalid register
     }
 
     #[test]
     fn test_parse_single_register() {
-        let registers = &[0b00000001]; // Only first flag set in register 1
+        let registers = &[0b0000_0001]; // Only first flag set in register 1
         let (flags, count) = HopperFlag::parse_hopper_flags_array(registers);
         assert_eq!(count, 1);
         assert_eq!(flags[0], Some(HopperFlag::AbsoluteMaximumCurrentExceeded));
@@ -400,7 +408,7 @@ mod tests {
 
     #[test]
     fn test_parse_multiple_flags_single_register() {
-        let registers = &[0b10000001]; // First and last flags in register 1
+        let registers = &[0b1000_0001]; // First and last flags in register 1
         let (flags, count) = HopperFlag::parse_hopper_flags_array(registers);
         assert_eq!(count, 2);
         assert_eq!(flags[0], Some(HopperFlag::AbsoluteMaximumCurrentExceeded));
@@ -409,13 +417,13 @@ mod tests {
 
     #[test]
     fn test_parse_multiple_registers() {
-        let registers = &[0b00000001, 0b00000010, 0b00000100]; // One flag in each register
+        let registers = &[0b0000_0001, 0b0000_0010, 0b0000_0100]; // One flag in each register
         let (flags, count) = HopperFlag::parse_hopper_flags_array(registers);
         assert_eq!(count, 3);
 
         let mut found_flags: heapless::Vec<HopperFlag, 21> = heapless::Vec::new();
         for flag in flags.into_iter().flatten() {
-            found_flags.push(flag).unwrap();
+            found_flags.push(flag).expect("");
         }
 
         assert!(found_flags.contains(&HopperFlag::AbsoluteMaximumCurrentExceeded));
@@ -433,14 +441,14 @@ mod tests {
 
     #[test]
     fn test_parse_no_flags_set() {
-        let registers = &[0b00000000, 0b00000000, 0b00000000];
+        let registers = &[0b0000_0000, 0b0000_0000, 0b0000_0000];
         let (_, count) = HopperFlag::parse_hopper_flags_array(registers);
         assert_eq!(count, 0);
     }
 
     #[test]
     fn test_parse_all_register_1_flags() {
-        let registers = &[0b11111111]; // All flags set in register 1
+        let registers = &[0b1111_1111]; // All flags set in register 1
         let (_, count) = HopperFlag::parse_hopper_flags_array(registers);
         assert_eq!(count, 8); // All 8 flags in register 1
     }
@@ -454,14 +462,14 @@ mod tests {
 
     #[test]
     fn test_parse_register_3_boundary() {
-        let registers = &[0b00000000, 0b00000000, 0b00011111]; // All valid flags in register 3
+        let registers = &[0b0000_0000, 0b0000_0000, 0b0001_1111]; // All valid flags in register 3
         let (_, count) = HopperFlag::parse_hopper_flags_array(registers);
         assert_eq!(count, 5); // Only 5 flags in register 3 (bits 0-4)
     }
 
     #[test]
     fn test_parse_register_3_invalid_bits() {
-        let registers = &[0b00000000, 0b00000000, 0b11100000]; // Invalid bits 5-7 in register 3
+        let registers = &[0b0000_0000, 0b0000_0000, 0b1110_0000]; // Invalid bits 5-7 in register 3
         let (_, count) = HopperFlag::parse_hopper_flags_array(registers);
         assert_eq!(count, 0); // Should ignore invalid bits
     }
@@ -497,7 +505,7 @@ mod tests {
 
     #[test]
     fn test_parse_with_heapless() {
-        let registers = &[0b00000011]; // First two flags in register 1
+        let registers = &[0b0000_0011]; // First two flags in register 1
         let flags = HopperFlag::parse_hopper_flags_heapless(registers);
         assert_eq!(flags.len(), 2);
         assert_eq!(flags[0], HopperFlag::AbsoluteMaximumCurrentExceeded);

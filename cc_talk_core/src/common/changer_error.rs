@@ -27,24 +27,24 @@ pub enum ChangerError {
 
 impl From<ChangerError> for u8 {
     fn from(error: ChangerError) -> Self {
-        error as u8
+        error as Self
     }
 }
 
 impl From<u8> for ChangerError {
     fn from(value: u8) -> Self {
         match value {
-            1 => ChangerError::HopperEmpty,
-            2 => ChangerError::HopperJam,
-            3 => ChangerError::HopperFraud,
-            4 => ChangerError::HopperFault,
-            101 => ChangerError::CoinAcceptorJam,
-            102 => ChangerError::CoinAcceptorFraudAttempt,
-            103 => ChangerError::CoinAcceptorFault,
-            104 => ChangerError::CoinAcceptorToManifoldOptoFault,
-            251 => ChangerError::CashboxFull,
-            252 => ChangerError::CashboxMissing,
-            _ => ChangerError::Other,
+            1 => Self::HopperEmpty,
+            2 => Self::HopperJam,
+            3 => Self::HopperFraud,
+            4 => Self::HopperFault,
+            101 => Self::CoinAcceptorJam,
+            102 => Self::CoinAcceptorFraudAttempt,
+            103 => Self::CoinAcceptorFault,
+            104 => Self::CoinAcceptorToManifoldOptoFault,
+            251 => Self::CashboxFull,
+            252 => Self::CashboxMissing,
+            _ => Self::Other,
         }
     }
 }
