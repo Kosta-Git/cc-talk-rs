@@ -8,80 +8,80 @@ pub enum BillEvent {
     /// Bill validated and held in escrow.
     /// Contains the bill type as u8.
     PendingCredit(u8),
-    /// Bill was rejected, reason as [crate::common::bill_event_types::BillEvent].
+    /// Bill was rejected, reason as `[crate::common::bill_event_types::BillEvent]`.
     Reject(BillEventReason),
-    /// Fraud attempt detected, reason as [crate::common::bill_event_types::BillEvent].
+    /// Fraud attempt detected, reason as `[crate::common::bill_event_types::BillEvent]`.
     FraudAttempt(BillEventReason),
-    /// Fatal error, reason as [crate::common::bill_event_types::BillEvent].
+    /// Fatal error, reason as `[crate::common::bill_event_types::BillEvent]`.
     FatalError(BillEventReason),
-    /// General status update, reason as [crate::common::bill_event_types::BillEvent].
+    /// General status update, reason as `[crate::common::bill_event_types::BillEvent]`.
     Status(BillEventReason),
 }
 
 impl core::fmt::Display for BillEvent {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            BillEvent::Credit(bill_type) => write!(f, "Credit: {}", bill_type),
-            BillEvent::PendingCredit(bill_type) => write!(f, "Pending Credit: {}", bill_type),
-            BillEvent::Reject(reason) => write!(f, "Reject: {}", reason),
-            BillEvent::FraudAttempt(reason) => write!(f, "Fraud Attempt: {}", reason),
-            BillEvent::FatalError(reason) => write!(f, "Fatal Error: {}", reason),
-            BillEvent::Status(reason) => write!(f, "Status: {}", reason),
+            Self::Credit(bill_type) => write!(f, "Credit: {bill_type}"),
+            Self::PendingCredit(bill_type) => write!(f, "Pending Credit: {bill_type}"),
+            Self::Reject(reason) => write!(f, "Reject: {reason}"),
+            Self::FraudAttempt(reason) => write!(f, "Fraud Attempt: {reason}"),
+            Self::FatalError(reason) => write!(f, "Fatal Error: {reason}"),
+            Self::Status(reason) => write!(f, "Status: {reason}"),
         }
     }
 }
 
 impl BillEvent {
-    /// Takes a single event from ReadBufferedBillEvents (two bytes result A and result B)
+    /// Takes a single event from `ReadBufferedBillEvents` (two bytes result A and result B)
     /// and returns an Option<BillEvent>.
-    pub fn from_result(a: u8, b: u8) -> Option<BillEvent> {
+    #[must_use]
+    pub const fn from_result(a: u8, b: u8) -> Option<Self> {
         match a {
-            1..=255 => BillEvent::when_result_a(a, b),
-            0 => BillEvent::when_result_b(b),
+            1..=255 => Self::when_result_a(a, b),
+            0 => Self::when_result_b(b),
         }
     }
 
-    fn when_result_a(a: u8, b: u8) -> Option<BillEvent> {
+    const fn when_result_a(a: u8, b: u8) -> Option<Self> {
         match b {
-            0 => Some(BillEvent::Credit(a)),
-            1 => Some(BillEvent::PendingCredit(a)),
+            0 => Some(Self::Credit(a)),
+            1 => Some(Self::PendingCredit(a)),
             _ => None,
         }
     }
 
-    fn when_result_b(b: u8) -> Option<BillEvent> {
-        use BillEvent::*;
-        use BillEventReason::*;
+    const fn when_result_b(b: u8) -> Option<Self> {
+        use BillEvent::{FatalError, FraudAttempt, Reject, Status};
 
         match b {
-            0 => Some(Status(MasterInhibitActive)),
-            1 => Some(Status(BillReturnedFromEscrow)),
-            2 => Some(Reject(InvalidBillValidationFailed)),
-            3 => Some(Reject(InvalidBillTransportFailed)),
-            4 => Some(Reject(InhibitedBillViaSerial)),
-            5 => Some(Reject(InhibitedBillViaDipSwitch)),
-            6 => Some(FatalError(BillJammedInTrasport)),
-            7 => Some(FatalError(BillJammedInStacker)),
-            8 => Some(FraudAttempt(BillPulledBackwards)),
-            9 => Some(FraudAttempt(BillTamper)),
-            10 => Some(Status(StackerOk)),
-            11 => Some(Status(StackerRemoved)),
-            12 => Some(Status(StackerInserted)),
-            13 => Some(FatalError(StackerFaulty)),
-            14 => Some(Status(StackerFull)),
-            15 => Some(FatalError(StackerJammed)),
-            16 => Some(FatalError(BillJammedInTransportSafe)),
-            17 => Some(FraudAttempt(OptoFraudDetected)),
-            18 => Some(FraudAttempt(StringFraudDetected)),
-            19 => Some(FatalError(AntiStringMechanismFaulty)),
-            20 => Some(Status(BarCodeDetected)),
-            21 => Some(Status(UnknownBillTypeStacked)),
+            0 => Some(Status(BillEventReason::MasterInhibitActive)),
+            1 => Some(Status(BillEventReason::BillReturnedFromEscrow)),
+            2 => Some(Reject(BillEventReason::InvalidBillValidationFailed)),
+            3 => Some(Reject(BillEventReason::InvalidBillTransportFailed)),
+            4 => Some(Reject(BillEventReason::InhibitedBillViaSerial)),
+            5 => Some(Reject(BillEventReason::InhibitedBillViaDipSwitch)),
+            6 => Some(FatalError(BillEventReason::BillJammedInTrasport)),
+            7 => Some(FatalError(BillEventReason::BillJammedInStacker)),
+            8 => Some(FraudAttempt(BillEventReason::BillPulledBackwards)),
+            9 => Some(FraudAttempt(BillEventReason::BillTamper)),
+            10 => Some(Status(BillEventReason::StackerOk)),
+            11 => Some(Status(BillEventReason::StackerRemoved)),
+            12 => Some(Status(BillEventReason::StackerInserted)),
+            13 => Some(FatalError(BillEventReason::StackerFaulty)),
+            14 => Some(Status(BillEventReason::StackerFull)),
+            15 => Some(FatalError(BillEventReason::StackerJammed)),
+            16 => Some(FatalError(BillEventReason::BillJammedInTransportSafe)),
+            17 => Some(FraudAttempt(BillEventReason::OptoFraudDetected)),
+            18 => Some(FraudAttempt(BillEventReason::StringFraudDetected)),
+            19 => Some(FatalError(BillEventReason::AntiStringMechanismFaulty)),
+            20 => Some(Status(BillEventReason::BarCodeDetected)),
+            21 => Some(Status(BillEventReason::UnknownBillTypeStacked)),
             _ => None,
         }
     }
 }
 
-/// Bill event in case the event type is not Credit or PendingCredit.
+/// Bill event in case the event type is not `Credit` or `PendingCredit`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum BillEventReason {
@@ -112,36 +112,36 @@ pub enum BillEventReason {
 impl core::fmt::Display for BillEventReason {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            BillEventReason::MasterInhibitActive => write!(f, "Master inhibit active"),
-            BillEventReason::BillReturnedFromEscrow => write!(f, "Bill returned from escrow"),
-            BillEventReason::InvalidBillValidationFailed => {
+            Self::MasterInhibitActive => write!(f, "Master inhibit active"),
+            Self::BillReturnedFromEscrow => write!(f, "Bill returned from escrow"),
+            Self::InvalidBillValidationFailed => {
                 write!(f, "Invalid bill validation failed")
             }
-            BillEventReason::InvalidBillTransportFailed => {
+            Self::InvalidBillTransportFailed => {
                 write!(f, "Invalid bill transport failed")
             }
-            BillEventReason::InhibitedBillViaSerial => write!(f, "Inhibited bill via serial"),
-            BillEventReason::InhibitedBillViaDipSwitch => {
+            Self::InhibitedBillViaSerial => write!(f, "Inhibited bill via serial"),
+            Self::InhibitedBillViaDipSwitch => {
                 write!(f, "Inhibited bill via dip switch")
             }
-            BillEventReason::BillJammedInTrasport => write!(f, "Bill jammed in transport"),
-            BillEventReason::BillJammedInStacker => write!(f, "Bill jammed in stacker"),
-            BillEventReason::BillPulledBackwards => write!(f, "Bill pulled backwards"),
-            BillEventReason::BillTamper => write!(f, "Bill tamper detected"),
-            BillEventReason::StackerOk => write!(f, "Stacker ok"),
-            BillEventReason::StackerRemoved => write!(f, "Stacker removed"),
-            BillEventReason::StackerInserted => write!(f, "Stacker inserted"),
-            BillEventReason::StackerFaulty => write!(f, "Stacker faulty"),
-            BillEventReason::StackerFull => write!(f, "Stacker full"),
-            BillEventReason::StackerJammed => write!(f, "Stacker jammed"),
-            BillEventReason::BillJammedInTransportSafe => {
+            Self::BillJammedInTrasport => write!(f, "Bill jammed in transport"),
+            Self::BillJammedInStacker => write!(f, "Bill jammed in stacker"),
+            Self::BillPulledBackwards => write!(f, "Bill pulled backwards"),
+            Self::BillTamper => write!(f, "Bill tamper detected"),
+            Self::StackerOk => write!(f, "Stacker ok"),
+            Self::StackerRemoved => write!(f, "Stacker removed"),
+            Self::StackerInserted => write!(f, "Stacker inserted"),
+            Self::StackerFaulty => write!(f, "Stacker faulty"),
+            Self::StackerFull => write!(f, "Stacker full"),
+            Self::StackerJammed => write!(f, "Stacker jammed"),
+            Self::BillJammedInTransportSafe => {
                 write!(f, "Bill jammed in transport safe")
             }
-            BillEventReason::OptoFraudDetected => write!(f, "Opto fraud detected"),
-            BillEventReason::StringFraudDetected => write!(f, "String fraud detected"),
-            BillEventReason::AntiStringMechanismFaulty => write!(f, "Anti-string mechanism faulty"),
-            BillEventReason::BarCodeDetected => write!(f, "Bar code detected"),
-            BillEventReason::UnknownBillTypeStacked => write!(f, "Unknown bill type stacked"),
+            Self::OptoFraudDetected => write!(f, "Opto fraud detected"),
+            Self::StringFraudDetected => write!(f, "String fraud detected"),
+            Self::AntiStringMechanismFaulty => write!(f, "Anti-string mechanism faulty"),
+            Self::BarCodeDetected => write!(f, "Bar code detected"),
+            Self::UnknownBillTypeStacked => write!(f, "Unknown bill type stacked"),
         }
     }
 }
@@ -155,8 +155,9 @@ pub struct BillValidatorPollResult {
     pub lost_events: u8,
 }
 impl BillValidatorPollResult {
-    pub fn new(event_counter: u8) -> Self {
-        BillValidatorPollResult {
+    #[must_use]
+    pub const fn new(event_counter: u8) -> Self {
+        Self {
             event_counter,
             events: heapless::Vec::new(),
             lost_events: 0,
@@ -167,6 +168,7 @@ impl BillValidatorPollResult {
         self.events.push(event).ok();
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
     }
@@ -178,9 +180,11 @@ pub enum BillValidatorPollResultError {
     TooManyEvents,
     InvalidPayload,
 }
+
 impl TryFrom<(&[u8], u8)> for BillValidatorPollResult {
     type Error = BillValidatorPollResultError;
 
+    #[allow(clippy::cast_possible_truncation)]
     fn try_from(value: (&[u8], u8)) -> Result<Self, Self::Error> {
         let (value, event_counter) = value;
         if value.is_empty() {
@@ -190,7 +194,7 @@ impl TryFrom<(&[u8], u8)> for BillValidatorPollResult {
         let received_event_counter = value[0];
         if received_event_counter == 0 {
             // No events, just a reset
-            return Ok(BillValidatorPollResult {
+            return Ok(Self {
                 event_counter,
                 events: heapless::Vec::new(),
                 lost_events: 0,
@@ -226,7 +230,7 @@ impl TryFrom<(&[u8], u8)> for BillValidatorPollResult {
             }
         }
 
-        Ok(BillValidatorPollResult {
+        Ok(Self {
             event_counter: received_event_counter,
             events,
             lost_events,
@@ -260,7 +264,7 @@ mod test {
     #[test]
     fn lost_events() {
         let buffer = [6u8, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0];
-        let result = BillValidatorPollResult::try_from((&buffer[..], 0)).unwrap();
+        let result = BillValidatorPollResult::try_from((&buffer[..], 0)).expect("no errors");
         assert_eq!(result.event_counter, 6);
         assert_eq!(result.lost_events, 1);
         assert_eq!(result.events.len(), 5);

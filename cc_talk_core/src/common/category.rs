@@ -51,28 +51,29 @@ pub enum Category {
 
 impl Category {
     /// Returns the default [Address] for the category.
-    pub fn default_address(&self) -> Address {
+    #[must_use]
+    pub const fn default_address(&self) -> Address {
         match self {
-            Category::Unknown => Address::Single(0),
-            Category::CoinAcceptor => Address::SingleAndRange(2, 11..=17),
-            Category::Payout => Address::SingleAndRange(3, 4..=10),
-            Category::Reel => Address::SingleAndRange(30, 31..=34),
-            Category::BillValidator => Address::SingleAndRange(40, 41..=47),
-            Category::CardReader => Address::Single(50),
-            Category::Changer => Address::Single(55),
-            Category::Display => Address::Single(60),
-            Category::Keypad => Address::Single(70),
-            Category::Dongle => Address::SingleAndRange(80, 85..=89),
-            Category::Meter => Address::Single(90),
-            Category::Bootloader => Address::Single(99),
-            Category::Power => Address::Single(100),
-            Category::Printer => Address::Single(110),
-            Category::RNG => Address::Single(120),
-            Category::HopperScale => Address::Single(130),
-            Category::CoinFeeder => Address::Single(140),
-            Category::BillRecycler => Address::Single(150),
-            Category::Escrow => Address::Single(160),
-            Category::Debug => Address::SingleAndRange(240, 241..=255),
+            Self::Unknown => Address::Single(0),
+            Self::CoinAcceptor => Address::SingleAndRange(2, 11..=17),
+            Self::Payout => Address::SingleAndRange(3, 4..=10),
+            Self::Reel => Address::SingleAndRange(30, 31..=34),
+            Self::BillValidator => Address::SingleAndRange(40, 41..=47),
+            Self::CardReader => Address::Single(50),
+            Self::Changer => Address::Single(55),
+            Self::Display => Address::Single(60),
+            Self::Keypad => Address::Single(70),
+            Self::Dongle => Address::SingleAndRange(80, 85..=89),
+            Self::Meter => Address::Single(90),
+            Self::Bootloader => Address::Single(99),
+            Self::Power => Address::Single(100),
+            Self::Printer => Address::Single(110),
+            Self::RNG => Address::Single(120),
+            Self::HopperScale => Address::Single(130),
+            Self::CoinFeeder => Address::Single(140),
+            Self::BillRecycler => Address::Single(150),
+            Self::Escrow => Address::Single(160),
+            Self::Debug => Address::SingleAndRange(240, 241..=255),
         }
     }
 }
@@ -89,103 +90,103 @@ impl From<&str> for Category {
     /// assert_eq!(category, Category::CoinAcceptor);
     /// ```
     fn from(category: &str) -> Self {
-        // TODO: Find a way to do the lowercase conversion without heap allocation.
+        // TODO: Find a way to convert to lowercase without alloc
         let category = category.trim();
 
         if category.eq_ignore_ascii_case("coin acceptor")
             || category.eq_ignore_ascii_case("coinacceptor")
         {
-            return Category::CoinAcceptor;
+            return Self::CoinAcceptor;
         }
 
         if category.eq_ignore_ascii_case("payout") {
-            return Category::Payout;
+            return Self::Payout;
         }
 
         if category.eq_ignore_ascii_case("reel") {
-            return Category::Reel;
+            return Self::Reel;
         }
 
         if category.eq_ignore_ascii_case("bill validator")
             || category.eq_ignore_ascii_case("billvalidator")
         {
-            return Category::BillValidator;
+            return Self::BillValidator;
         }
 
         if category.eq_ignore_ascii_case("card reader")
             || category.eq_ignore_ascii_case("cardreader")
         {
-            return Category::CardReader;
+            return Self::CardReader;
         }
 
         if category.eq_ignore_ascii_case("changer") {
-            return Category::Changer;
+            return Self::Changer;
         }
 
         if category.eq_ignore_ascii_case("display") {
-            return Category::Display;
+            return Self::Display;
         }
 
         if category.eq_ignore_ascii_case("keypad") {
-            return Category::Keypad;
+            return Self::Keypad;
         }
 
         if category.eq_ignore_ascii_case("dongle") {
-            return Category::Dongle;
+            return Self::Dongle;
         }
 
         if category.eq_ignore_ascii_case("meter") {
-            return Category::Meter;
+            return Self::Meter;
         }
 
         if category.eq_ignore_ascii_case("bootloader") {
-            return Category::Bootloader;
+            return Self::Bootloader;
         }
 
         if category.eq_ignore_ascii_case("power") {
-            return Category::Power;
+            return Self::Power;
         }
 
         if category.eq_ignore_ascii_case("printer") {
-            return Category::Printer;
+            return Self::Printer;
         }
 
         if category.eq_ignore_ascii_case("rng") {
-            return Category::RNG;
+            return Self::RNG;
         }
 
         if category.eq_ignore_ascii_case("hopper scale")
             || category.eq_ignore_ascii_case("hopperscale")
         {
-            return Category::HopperScale;
+            return Self::HopperScale;
         }
 
         if category.eq_ignore_ascii_case("coin feeder")
             || category.eq_ignore_ascii_case("coinfeeder")
         {
-            return Category::CoinFeeder;
+            return Self::CoinFeeder;
         }
 
         if category.eq_ignore_ascii_case("bill recycler")
             || category.eq_ignore_ascii_case("billrecycler")
         {
-            return Category::BillRecycler;
+            return Self::BillRecycler;
         }
 
         if category.eq_ignore_ascii_case("escrow") {
-            return Category::Escrow;
+            return Self::Escrow;
         }
 
         if category.eq_ignore_ascii_case("debug") {
-            return Category::Debug;
+            return Self::Debug;
         }
 
-        Category::Unknown
+        Self::Unknown
     }
 }
 
 /// Represents a ccTalk device address.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Address {
     // Represents a single address.
@@ -210,10 +211,11 @@ impl Address {
     /// assert!(hopperAddresses.is_in_range(4));
     /// assert!(hopperAddresses.is_in_range(5));
     /// ```
+    #[must_use]
     pub fn is_in_range(&self, address: u8) -> bool {
         match self {
-            Address::Single(addr) => *addr == address,
-            Address::SingleAndRange(addr, range) => *addr == address || range.contains(&address),
+            Self::Single(addr) => *addr == address,
+            Self::SingleAndRange(addr, range) => *addr == address || range.contains(&address),
         }
     }
 
@@ -238,8 +240,9 @@ impl Address {
     ///
     /// assert_eq!(dongle_iter.collect::<Vec<_>>(), vec![80, 85, 86, 87, 88, 89]);
     /// ```
+    #[must_use]
     pub fn iter(&self) -> AddressIterator {
-        self.clone().into_iter()
+        self.into_iter()
     }
 }
 
@@ -249,13 +252,31 @@ impl IntoIterator for Address {
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            Address::Single(addr) => AddressIterator {
+            Self::Single(addr) => AddressIterator {
                 single_addr: Some(addr),
                 range_iter: None,
             },
-            Address::SingleAndRange(addr, range) => AddressIterator {
+            Self::SingleAndRange(addr, range) => AddressIterator {
                 single_addr: Some(addr),
                 range_iter: Some(range),
+            },
+        }
+    }
+}
+
+impl IntoIterator for &Address {
+    type Item = u8;
+    type IntoIter = AddressIterator;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Address::Single(addr) => AddressIterator {
+                single_addr: Some(*addr),
+                range_iter: None,
+            },
+            Address::SingleAndRange(addr, range) => AddressIterator {
+                single_addr: Some(*addr),
+                range_iter: Some(range.clone()),
             },
         }
     }
@@ -294,17 +315,18 @@ pub enum AddressMode {
 
 impl AddressMode {
     /// Returns the value of the address mode as a u8.
-    pub fn value(&self) -> u8 {
+    #[must_use]
+    pub const fn value(&self) -> u8 {
         match self {
-            AddressMode::Other => 0,
-            AddressMode::Flash => 1,
-            AddressMode::ROM => 2,
-            AddressMode::EEPROM => 4,
-            AddressMode::InterfaceConnector => 8,
-            AddressMode::PCBLink => 16,
-            AddressMode::Switch => 32,
-            AddressMode::SerialCommandVolatile => 64,
-            AddressMode::SerialCommandNonVolatile => 128,
+            Self::Other => 0,
+            Self::Flash => 1,
+            Self::ROM => 2,
+            Self::EEPROM => 4,
+            Self::InterfaceConnector => 8,
+            Self::PCBLink => 16,
+            Self::Switch => 32,
+            Self::SerialCommandVolatile => 64,
+            Self::SerialCommandNonVolatile => 128,
         }
     }
 

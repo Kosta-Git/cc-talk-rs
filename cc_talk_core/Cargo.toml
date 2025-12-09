@@ -10,6 +10,11 @@ repository = "https://github.com/Kosta-Git/cc-talk-rs/"
 readme = "../README.md"
 exclude = [".gitignore"]
 
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+
 [features]
 default = []
 crc-lookup = []

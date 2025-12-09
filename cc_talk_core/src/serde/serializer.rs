@@ -1,5 +1,15 @@
 use crate::cc_talk::{ChecksumType, Device, Packet, SOURCE_OFFSET};
 
+/// Serializes a ccTalk packet by calculating and inserting the appropriate checksum.
+///
+/// # Errors
+///
+/// Other errors will return a `SerializationError` if:
+/// - Buffer is too small to write the checksum.
+///
+/// # Panics
+///
+/// Panics if the device is encrypted, as encrypted devices are not supported.
 pub fn serialize<B>(device: &Device, packet: &mut Packet<B>) -> Result<(), SerializationError>
 where
     B: AsMut<[u8]> + AsRef<[u8]>,
@@ -28,15 +38,15 @@ where
                 .get_checksum_offset()
                 .map_err(|_| SerializationError::BufferTooSmall)?;
 
-            let checksum_lsb = (checksum & 0xFF) as u8;
-            let checksum_msb = ((checksum >> 8) & 0xFF) as u8;
+            let least_significant_bits = (checksum & 0xFF) as u8;
+            let most_significant_bits = ((checksum >> 8) & 0xFF) as u8;
 
             packet
-                .write_byte(SOURCE_OFFSET, checksum_lsb)
+                .write_byte(SOURCE_OFFSET, least_significant_bits)
                 .map_err(|_| SerializationError::BufferTooSmall)?;
 
             packet
-                .write_byte(checksum_index as usize, checksum_msb)
+                .write_byte(checksum_index as usize, most_significant_bits)
                 .map_err(|_| SerializationError::BufferTooSmall)?;
 
             Ok(())
@@ -53,7 +63,7 @@ pub enum SerializationError {
 impl core::fmt::Display for SerializationError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            SerializationError::BufferTooSmall => write!(f, "Buffer too small for serialization"),
+            Self::BufferTooSmall => write!(f, "Buffer too small for serialization"),
         }
     }
 }
@@ -73,6 +83,6 @@ mod test {
 
         assert!(result.is_ok());
         assert!(packet.get_checksum().is_ok());
-        assert_eq!(packet.get_checksum().unwrap(), 253);
+        assert_eq!(packet.get_checksum().expect("is_ok"), 253);
     }
 }
