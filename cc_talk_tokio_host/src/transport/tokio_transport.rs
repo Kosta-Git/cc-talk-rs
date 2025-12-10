@@ -1,10 +1,9 @@
 #![allow(dead_code)]
 
 use cc_talk_core::cc_talk::{
-    Category, ChecksumType, DATA_LENGTH_OFFSET, Device, Header, MAX_BLOCK_LENGTH, Packet,
+    Category, ChecksumType, Command, DATA_LENGTH_OFFSET, Device, Header, MAX_BLOCK_LENGTH, Packet,
     deserializer::deserialize, serializer::serialize,
 };
-use cc_talk_host::command::Command;
 use std::time::Duration;
 use thiserror::Error;
 use tokio::{

@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
 use cc_talk_core::cc_talk::{
-    BillRouteCode, BillRoutingError, BillValidatorPollResult, BitMask, CurrencyToken, Device,
+    BillRouteCode, BillRoutingError, BillValidatorPollResult, BitMask, Command, CurrencyToken,
+    Device, ParseResponseError,
 };
-use cc_talk_host::{command::Command, device::device_commands::*};
+use cc_talk_host::device::device_commands::*;
 use tokio::sync::mpsc;
 
 use crate::transport::tokio_transport::TransportMessage;

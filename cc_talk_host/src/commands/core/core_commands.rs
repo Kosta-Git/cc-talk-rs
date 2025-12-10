@@ -1,9 +1,6 @@
-use cc_talk_core::cc_talk::{Category, Header, Manufacturer};
+use cc_talk_core::cc_talk::{Category, Command, Header, Manufacturer, ParseResponseError};
 
-use super::{
-    super::command::{BelongsTo, Command, ParseResponseError},
-    CoreCommandSet,
-};
+use super::{super::command::BelongsTo, CoreCommandSet};
 
 #[derive(Debug)]
 pub struct SimplePollCommand;

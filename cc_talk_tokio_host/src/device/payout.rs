@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
 use cc_talk_core::cc_talk::{
-    CurrencyToken, Device, HopperDispenseStatus, HopperFlag, HopperStatus,
+    Command, CurrencyToken, Device, HopperDispenseStatus, HopperFlag, HopperStatus,
+    ParseResponseError,
 };
-use cc_talk_host::{command::Command, device::device_commands::*};
+use cc_talk_host::device::device_commands::*;
 use tokio::sync::mpsc;
 
 use crate::transport::tokio_transport::TransportMessage;
