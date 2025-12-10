@@ -11,4 +11,3 @@ fn main() {
     assert_eq!(command.data(), &[] as &[u8]);
     assert_eq!(command.parse_response(&[]).unwrap(), ());
 }
-
