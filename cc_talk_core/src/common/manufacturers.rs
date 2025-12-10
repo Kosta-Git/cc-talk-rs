@@ -287,7 +287,7 @@ impl ManufacturerIdentifier {
 
     /// Returns the manufacturer name as a string
     #[must_use]
-    pub const fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         match self {
             Self::Known(manufacturer) => manufacturer.full_name(),
             Self::Unknown(name) => name.as_str(),

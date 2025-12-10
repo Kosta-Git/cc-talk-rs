@@ -1,0 +1,8 @@
+error: expected `struct` got `union`
+ --> tests/no_compile/union-fails.rs:4:1
+  |
+4 | / pub union MyType {
+5 | |     a: u32,
+6 | |     b: u8,
+7 | | }
+  | |_^

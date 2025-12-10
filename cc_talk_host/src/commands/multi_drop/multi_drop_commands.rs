@@ -1,9 +1,6 @@
-use cc_talk_core::cc_talk::{Address, Header};
+use cc_talk_core::cc_talk::{Address, Command, Header, ParseResponseError};
 
-use super::{
-    super::command::{BelongsTo, Command, ParseResponseError},
-    MdbCommandSet,
-};
+use super::{super::command::BelongsTo, MdbCommandSet};
 
 /// Address poll is a MDCES command.
 ///

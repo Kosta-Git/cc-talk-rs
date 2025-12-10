@@ -1,3 +1,10 @@
 [workspace]
 resolver = "3"
-members = ["cc_talk_cli","cc_talk_core", "cc_talk_device", "cc_talk_host", "cc_talk_tokio_host"]
+members = [
+  "cc_talk_cli",
+  "cc_talk_codegen",
+  "cc_talk_core",
+  "cc_talk_device",
+  "cc_talk_host",
+  "cc_talk_tokio_host",
+]

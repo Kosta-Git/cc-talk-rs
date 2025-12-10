@@ -1,8 +1,9 @@
 #![allow(dead_code, async_fn_in_trait)]
 
-use cc_talk_core::cc_talk::{Category, Device, Manufacturer, Packet, PacketError, SerialCode};
+use cc_talk_core::cc_talk::{
+    Category, Command, Device, Manufacturer, Packet, PacketError, ParseResponseError, SerialCode,
+};
 use cc_talk_host::{
-    command::{Command, ParseResponseError},
     core::core_commands::{
         RequestEquipementCategoryIdCommand, RequestManufacturerIdCommand,
         RequestProductCodeCommand, SimplePollCommand,

@@ -1,9 +1,8 @@
-use cc_talk_core::cc_talk::{DataStorage, Header, RTBYDate, SerialCode};
-
-use super::{
-    super::command::{BelongsTo, Command, ParseResponseError},
-    CorePlusCommandSet,
+use cc_talk_core::cc_talk::{
+    Command, DataStorage, Header, ParseResponseError, RTBYDate, SerialCode,
 };
+
+use super::{super::command::BelongsTo, CorePlusCommandSet};
 
 #[derive(Debug)]
 pub struct RequestSerialNumberCommand;
@@ -132,10 +131,7 @@ impl Command for SendDHPublicKeyCommand<'_> {
     }
 
     /// Parses the response payload, which is expected to be empty.
-    fn parse_response(
-        &self,
-        response_payload: &[u8],
-    ) -> Result<Self::Response, ParseResponseError> {
+    fn parse_response(&self, response_payload: &[u8]) -> Result<(), ParseResponseError> {
         if !response_payload.is_empty() {
             return Err(ParseResponseError::DataLengthMismatch(
                 0,
@@ -519,7 +515,7 @@ impl Command for DataStreamCommand<'_> {
     }
 
     /// Does nothing as this is used for custom data streams.
-    fn parse_response(&self, _: &[u8]) -> Result<Self::Response, ParseResponseError> {
+    fn parse_response(&self, _: &[u8]) -> Result<(), ParseResponseError> {
         Ok(())
     }
 }

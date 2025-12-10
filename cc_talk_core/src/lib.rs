@@ -21,6 +21,7 @@ pub mod cc_talk {
     pub use crate::common::coin_calibration_codes::*;
     pub use crate::common::coin_event::*;
     pub use crate::common::coin_value_format::*;
+    pub use crate::common::command::*;
     pub use crate::common::currency::*;
     pub use crate::common::data_storage::*;
     pub use crate::common::date::*;

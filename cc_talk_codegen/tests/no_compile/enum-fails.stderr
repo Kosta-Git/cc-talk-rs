@@ -1,0 +1,5 @@
+error: expected `struct` got `enum`
+ --> tests/no_compile/enum-fails.rs:4:1
+  |
+4 | pub enum SimplePollCommand {}
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
