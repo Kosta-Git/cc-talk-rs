@@ -101,6 +101,7 @@ version = "0.0.3"
 dependencies = [
  "defmt",
  "heapless",
+ "thiserror",
 ]
 
 [[package]]
@@ -120,6 +121,7 @@ dependencies = [
  "cc_talk_core",
  "defmt",
  "heapless",
+ "thiserror",
  "tracing",
 ]
 

@@ -93,9 +93,10 @@ pub enum MemoryType {
     PermanentLimitedUse = 2,
     PermanentUnlimitedUse = 3,
 }
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum MemoryTypeError {
+    #[error("Invalid memory type")]
     InvalidMemoryType,
 }
 impl TryFrom<u8> for MemoryType {

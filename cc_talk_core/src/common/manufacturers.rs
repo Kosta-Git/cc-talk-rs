@@ -287,7 +287,8 @@ impl ManufacturerIdentifier {
 
     /// Returns the manufacturer name as a string
     #[must_use]
-    pub const fn name(&self) -> &str {
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn name(&self) -> &str {
         match self {
             Self::Known(manufacturer) => manufacturer.full_name(),
             Self::Unknown(name) => name.as_str(),

@@ -8,11 +8,14 @@ pub struct BitMask<const N: usize> {
     bit_count: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum BitMaskError {
+    #[error("index out of bounds")]
     OutOfBounds,
+    #[error("not enough capacity")]
     NotEnoughCapacity,
+    #[error("size mismatch")]
     SizeMismatch,
 }
 
@@ -340,9 +343,10 @@ impl<const N: usize> BitMask<N> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum BitMaskBinaryOpError {
+    #[error("size mismatch")]
     SizeMismatch,
 }
 

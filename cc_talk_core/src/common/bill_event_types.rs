@@ -174,10 +174,13 @@ impl BillValidatorPollResult {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum BillValidatorPollResultError {
+    #[error("not enough events in buffer")]
     NotEnoughEvents,
+    #[error("too many events")]
     TooManyEvents,
+    #[error("invalid payload")]
     InvalidPayload,
 }
 
