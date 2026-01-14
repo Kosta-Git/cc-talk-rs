@@ -21,10 +21,12 @@ impl TryFrom<u8> for BillRouteCode {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, thiserror::Error)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum BillRoutingError {
+    #[error("escrow is empty")]
     EscrowEmpty = 254,
+    #[error("failed to route bill")]
     FailedToRoute = 255,
 }
 
@@ -41,10 +43,12 @@ impl TryFrom<u8> for BillRoutingError {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, thiserror::Error)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum StackerCycleError {
+    #[error("stacker fault detected")]
     StackerFault = 254,
+    #[error("stacker not fitted")]
     StackerNotFitted = 255,
 }
 

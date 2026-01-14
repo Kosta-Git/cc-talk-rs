@@ -189,11 +189,14 @@ impl CurrencyValue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum CurrencyTokenError {
+    #[error("invalid currency token format")]
     InvalidFormat,
+    #[error("value string too small")]
     ValueStringTooSmall,
+    #[error("coin not supported by device")]
     CoinNotSupportedByDevice,
 }
 

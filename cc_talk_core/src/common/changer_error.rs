@@ -1,27 +1,38 @@
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ChangerError {
     /// Requires refill
+    #[error("hopper is empty - requires refill")]
     HopperEmpty = 1,
     /// Remove hopper shelf and clear jam
+    #[error("hopper jam - remove hopper shelf and clear jam")]
     HopperJam = 2,
     /// Alert security
+    #[error("hopper fraud detected - alert security")]
     HopperFraud = 3,
     /// Service callout
+    #[error("hopper fault - service callout required")]
     HopperFault = 4,
     /// Remove coin acceptor and clear jam
+    #[error("coin acceptor jam - remove coin acceptor and clear jam")]
     CoinAcceptorJam = 101,
     /// Alert security
+    #[error("coin acceptor fraud attempt - alert security")]
     CoinAcceptorFraudAttempt = 102,
     /// service callout
+    #[error("coin acceptor fault - service callout required")]
     CoinAcceptorFault = 103,
     /// check connector
+    #[error("coin acceptor to manifold opto fault - check connector")]
     CoinAcceptorToManifoldOptoFault = 104,
     /// Empty cashbox, money time!!!
+    #[error("cashbox is full - empty cashbox")]
     CashboxFull = 251,
     /// Insert cashbox
+    #[error("cashbox is missing - insert cashbox")]
     CashboxMissing = 252,
+    #[error("other changer error")]
     Other = 255,
 }
 

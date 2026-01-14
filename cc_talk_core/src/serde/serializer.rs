@@ -54,18 +54,11 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum SerializationError {
+    #[error("buffer too small for serialization")]
     BufferTooSmall,
-}
-
-impl core::fmt::Display for SerializationError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::BufferTooSmall => write!(f, "Buffer too small for serialization"),
-        }
-    }
 }
 
 #[cfg(test)]

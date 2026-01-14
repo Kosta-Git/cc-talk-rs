@@ -83,10 +83,13 @@ impl CoinAcceptorPollResult {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CoinAcceptorPollResultError {
+    #[error("not enough events")]
     NotEnoughEvents,
+    #[error("too many events")]
     TooManyEvents,
+    #[error("invalid payload")]
     InvalidPayload,
 }
 impl TryFrom<(&[u8], u8)> for CoinAcceptorPollResult {

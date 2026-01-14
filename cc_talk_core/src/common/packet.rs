@@ -271,28 +271,17 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum PacketError {
+    #[error("Index was out of bounds.")]
     OutOfBounds,
+    #[error("The data length exceeds the buffer size")]
     DataLengthMismatch,
+    #[error("Invalid header value: {0}")]
     InvalidHeader(u8),
+    #[error("The packet couldnt be validated")]
     InvalidPacket,
-}
-
-impl core::fmt::Display for PacketError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::OutOfBounds => "Index was out of bounds.",
-                Self::InvalidHeader(_) => "Invalid header value.",
-                Self::DataLengthMismatch => "The data length exceeds the buffer size",
-                Self::InvalidPacket => "The packet couldnt be validated",
-            }
-        )
-    }
 }
 
 /// ccTalk headers enum
