@@ -633,6 +633,7 @@ impl BelongsTo<CorePlusCommandSet> for ResetDeviceCommand {}
 #[cfg(test)]
 mod test {
     use cc_talk_core::cc_talk::MemoryType;
+    use heapless::format;
 
     use super::*;
 
@@ -721,7 +722,7 @@ mod test {
     fn request_base_year_works_with_all_base_year() {
         for i in 0..=9999 {
             let command = RequestBaseYearCommand;
-            let base_year = std::format!("{:04}", i);
+            let base_year: heapless::String<4> = format!("{:04}", i).expect("should work");
             let parse_result = command.parse_response(base_year.as_bytes());
             assert!(parse_result.is_ok(), "Failed for base year: {}", i);
             assert_eq!(

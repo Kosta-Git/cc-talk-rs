@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{ops::Not, time::Duration};
 
 use super::tokio_transport::TransportError;
 
@@ -96,7 +96,7 @@ impl RetryInstance {
     }
 
     pub async fn delay_for_retry(&self) {
-        if !self.delay.is_zero() && self.can_retry() {
+        if self.delay.is_zero().not() && self.can_retry() {
             tokio::time::sleep(self.delay).await;
         }
     }
@@ -179,5 +179,43 @@ mod test {
             retry_instance.last_error(),
             super::TransportError::ChecksumError
         );
+    }
+
+    #[tokio::test]
+    async fn delay_for_retry_works() {
+        let retry_config = RetryConfig {
+            max_retries: 3,
+            retry_delay: Duration::from_millis(200),
+            retry_on_timeout: true,
+            retry_on_checksum_error: true,
+            retry_on_nack: true,
+            retry_on_socket_error: true,
+        };
+        let retry_instance = retry_config.create_retry_instance();
+
+        let start = std::time::Instant::now();
+        retry_instance.delay_for_retry().await;
+        let elapsed = start.elapsed();
+
+        assert!(elapsed >= Duration::from_millis(200));
+    }
+
+    #[tokio::test]
+    async fn delay_for_retry_skips_if_duration_is_zero() {
+        let retry_config = RetryConfig {
+            max_retries: 3,
+            retry_delay: Duration::from_millis(0),
+            retry_on_timeout: true,
+            retry_on_checksum_error: true,
+            retry_on_nack: true,
+            retry_on_socket_error: true,
+        };
+        let retry_instance = retry_config.create_retry_instance();
+
+        let start = std::time::Instant::now();
+        retry_instance.delay_for_retry().await;
+        let elapsed = start.elapsed();
+
+        assert!(elapsed < Duration::from_millis(5));
     }
 }

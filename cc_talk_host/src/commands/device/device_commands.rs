@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use core::time::Duration;
+
 use cc_talk_core::cc_talk::{
     BillRouteCode, BillRoutingError, BillValidatorPollResult, BillValidatorPollResultError,
     BitMask, BitMaskError, ChangerDevice, ChangerError, ChangerFlags, ChangerPollResult,
@@ -31,11 +33,8 @@ pub struct PollingPriority {
     pub value: u8,
 }
 
-#[cfg(feature = "std")]
 impl PollingPriority {
-    pub fn as_duration(&self) -> Option<std::time::Duration> {
-        use std::time::Duration;
-
+    pub fn as_duration(&self) -> Option<Duration> {
         let value = self.value as u64;
 
         let duration = match self.unit {
