@@ -1,10 +1,10 @@
 use cc_talk_core::cc_talk::{
-    deserializer::deserialize, serializer::serialize, Header, Packet, PacketError, MAX_BLOCK_LENGTH,
+    deserializer::deserialize, serializer::serialize, Header, Packet, PacketError,
 };
 
 use crate::{
     device_impl::{DeviceImpl, SimplePayoutDevice},
-    log::{error, info},
+    log::error,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -1,9 +1,6 @@
 use cc_talk_core::cc_talk::{Category, Header, Manufacturer};
 
-use super::{
-    super::command::{BelongsTo, Command, ParseResponseError},
-    CoreCommandSet,
-};
+use super::super::command::{Command, ParseResponseError};
 
 #[derive(Debug)]
 pub struct SimplePollCommand;
@@ -31,7 +28,6 @@ impl Command for SimplePollCommand {
         }
     }
 }
-impl BelongsTo<CoreCommandSet> for SimplePollCommand {}
 
 #[derive(Debug)]
 pub struct RequestManufacturerIdCommand;
@@ -58,7 +54,6 @@ impl Command for RequestManufacturerIdCommand {
             .ok_or(ParseResponseError::ParseError("Unknown manufacturer"))
     }
 }
-impl BelongsTo<CoreCommandSet> for RequestManufacturerIdCommand {}
 
 #[derive(Debug)]
 pub struct RequestEquipementCategoryIdCommand;
@@ -85,7 +80,6 @@ impl Command for RequestEquipementCategoryIdCommand {
         Ok(Category::from(category_str))
     }
 }
-impl BelongsTo<CoreCommandSet> for RequestEquipementCategoryIdCommand {}
 
 #[derive(Debug)]
 pub struct RequestProductCodeCommand;
@@ -117,7 +111,6 @@ impl Command for RequestProductCodeCommand {
         ))
     }
 }
-impl BelongsTo<CoreCommandSet> for RequestProductCodeCommand {}
 
 #[derive(Debug)]
 pub struct RequestBuildCodeCommand;
@@ -147,28 +140,10 @@ impl Command for RequestBuildCodeCommand {
         Ok(())
     }
 }
-impl BelongsTo<CoreCommandSet> for RequestBuildCodeCommand {}
 
 #[deprecated(note = "This command is not implemented yet.")]
 #[derive(Debug)]
 pub struct RequestEncryptionSupportCommand;
-impl Command for RequestEncryptionSupportCommand {
-    type Response = bool;
-
-    fn header(&self) -> Header {
-        Header::RequestEncryptionSupport
-    }
-
-    fn data(&self) -> &[u8] {
-        &[170, 85, 0, 0, 85, 170]
-    }
-
-    /// The response is a single byte indicating whether encryption is supported.
-    fn parse_response(&self, _: &[u8]) -> Result<Self::Response, ParseResponseError> {
-        todo!("encryption support command not implemented yet")
-    }
-}
-impl BelongsTo<CoreCommandSet> for RequestEncryptionSupportCommand {}
 
 #[cfg(test)]
 mod test {
@@ -257,16 +232,5 @@ mod test {
         let invalid_build_code = &[0xFF, 0xFE, 0xFD];
         let parsed_invalid = cmd.parse_response(invalid_build_code);
         assert!(parsed_invalid.is_err());
-    }
-
-    #[test]
-    #[should_panic]
-    fn request_encryption_support() {
-        let cmd = RequestEncryptionSupportCommand;
-        assert_eq!(cmd.header(), Header::RequestEncryptionSupport);
-        assert_eq!(cmd.data(), &[170, 85, 0, 0, 85, 170]);
-
-        // This command is not implemented yet, so we just check that it compiles.
-        let _ = cmd.parse_response(&[]);
     }
 }

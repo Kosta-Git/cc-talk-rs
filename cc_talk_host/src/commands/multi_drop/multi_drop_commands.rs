@@ -1,9 +1,6 @@
 use cc_talk_core::cc_talk::{Address, Header};
 
-use super::{
-    super::command::{BelongsTo, Command, ParseResponseError},
-    MdbCommandSet,
-};
+use super::super::command::{Command, ParseResponseError};
 
 /// Address poll is a MDCES command.
 ///
@@ -35,7 +32,6 @@ impl Command for AddressPollCommand {
         Ok(response_payload[0])
     }
 }
-impl BelongsTo<MdbCommandSet> for AddressPollCommand {}
 
 /// Address clash is a MDCES command.
 pub struct AddressClashCommand;
@@ -64,7 +60,6 @@ impl Command for AddressClashCommand {
         Ok(response_payload[0])
     }
 }
-impl BelongsTo<MdbCommandSet> for AddressClashCommand {}
 
 /// Address change is a MDCES command.
 pub struct AddressChangeCommand {
@@ -107,7 +102,6 @@ impl Command for AddressChangeCommand {
         }
     }
 }
-impl BelongsTo<MdbCommandSet> for AddressChangeCommand {}
 
 /// Address random is a MDCES command.
 pub struct AddressRandomCommand;
@@ -136,4 +130,3 @@ impl Command for AddressRandomCommand {
         }
     }
 }
-impl BelongsTo<MdbCommandSet> for AddressRandomCommand {}

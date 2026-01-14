@@ -1,9 +1,6 @@
 use cc_talk_core::cc_talk::{DataStorage, Header, RTBYDate, SerialCode};
 
-use super::{
-    super::command::{BelongsTo, Command, ParseResponseError},
-    CorePlusCommandSet,
-};
+use super::super::command::{Command, ParseResponseError};
 
 #[derive(Debug)]
 pub struct RequestSerialNumberCommand;
@@ -36,7 +33,6 @@ impl Command for RequestSerialNumberCommand {
         ))
     }
 }
-impl BelongsTo<CorePlusCommandSet> for RequestSerialNumberCommand {}
 
 #[derive(Debug)]
 pub struct RequestSoftwareRevisionCommand;
@@ -68,7 +64,6 @@ impl Command for RequestSoftwareRevisionCommand {
         ))
     }
 }
-impl BelongsTo<CorePlusCommandSet> for RequestSoftwareRevisionCommand {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ReadDHPublicKeyMode {
@@ -80,38 +75,12 @@ pub enum ReadDHPublicKeyMode {
 pub struct ReadDHPublicKeyCommand {
     buffer: [u8; 1],
 }
-impl ReadDHPublicKeyCommand {
-    /// Creates a new command to read the Diffie-Hellman public key.
-    ///
-    /// `mode` specifies whether to request the status or the public key.
-    pub fn new(mode: ReadDHPublicKeyMode) -> Self {
-        Self {
-            buffer: [mode as u8],
-        }
-    }
-}
-impl Command for ReadDHPublicKeyCommand {
-    type Response = ();
-
-    fn header(&self) -> Header {
-        Header::ReadDHPubKey
-    }
-
-    fn data(&self) -> &[u8] {
-        &self.buffer
-    }
-
-    /// Parses the response payload as a 32-byte public key.
-    fn parse_response(&self, _: &[u8]) -> Result<Self::Response, ParseResponseError> {
-        todo!("encryption is not supported yet, so this command is not implemented")
-    }
-}
-impl BelongsTo<CorePlusCommandSet> for ReadDHPublicKeyCommand {}
 
 #[derive(Debug)]
 pub struct SendDHPublicKeyCommand<'a> {
     key: &'a [u8],
 }
+#[allow(dead_code)]
 impl<'a> SendDHPublicKeyCommand<'a> {
     /// Creates a new command to send the Diffie-Hellman public key.
     ///
@@ -145,17 +114,14 @@ impl Command for SendDHPublicKeyCommand<'_> {
         Ok(())
     }
 }
-impl BelongsTo<CorePlusCommandSet> for SendDHPublicKeyCommand<'_> {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
 #[derive(Debug)]
 pub struct RequestEncryptedProductIdCommand;
-impl BelongsTo<CorePlusCommandSet> for RequestEncryptedProductIdCommand {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
 #[derive(Debug)]
 pub struct RequestACMIEncryptedDataCommand;
-impl BelongsTo<CorePlusCommandSet> for RequestACMIEncryptedDataCommand {}
 
 #[derive(Debug)]
 pub struct RequestDataStorageAvailabilityCommand;
@@ -193,12 +159,10 @@ impl Command for RequestDataStorageAvailabilityCommand {
         ]))
     }
 }
-impl BelongsTo<CorePlusCommandSet> for RequestDataStorageAvailabilityCommand {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
 #[derive(Debug)]
 pub struct ACMIUnencryptedProductIdCommand;
-impl BelongsTo<CorePlusCommandSet> for ACMIUnencryptedProductIdCommand {}
 
 #[derive(Debug)]
 pub struct CalculateRomChecksumCommand;
@@ -232,7 +196,6 @@ impl Command for CalculateRomChecksumCommand {
         ]))
     }
 }
-impl BelongsTo<CorePlusCommandSet> for CalculateRomChecksumCommand {}
 
 #[derive(Debug)]
 pub struct RequestCreationDateCommand;
@@ -255,7 +218,6 @@ impl Command for RequestCreationDateCommand {
         parse_rtby_from_payload(response_payload)
     }
 }
-impl BelongsTo<CorePlusCommandSet> for RequestCreationDateCommand {}
 
 #[derive(Debug)]
 pub struct RequestLastModificationDateCommand;
@@ -278,7 +240,6 @@ impl Command for RequestLastModificationDateCommand {
         parse_rtby_from_payload(response_payload)
     }
 }
-impl BelongsTo<CorePlusCommandSet> for RequestLastModificationDateCommand {}
 
 fn parse_rtby_from_payload(response_payload: &[u8]) -> Result<RTBYDate, ParseResponseError> {
     if response_payload.len() != 2 {
@@ -331,7 +292,6 @@ impl Command for RequestBaseYearCommand {
             })
     }
 }
-impl BelongsTo<CorePlusCommandSet> for RequestBaseYearCommand {}
 
 #[derive(Debug)]
 pub struct RequestAddressModeCommand;
@@ -361,17 +321,14 @@ impl Command for RequestAddressModeCommand {
         Ok(response_payload[0])
     }
 }
-impl BelongsTo<CorePlusCommandSet> for RequestAddressModeCommand {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
 #[derive(Debug)]
 pub struct SwitchEncryptionCodeCommand;
-impl BelongsTo<CorePlusCommandSet> for SwitchEncryptionCodeCommand {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
 #[derive(Debug)]
 pub struct StoreEncryptionCodeCommand;
-impl BelongsTo<CorePlusCommandSet> for StoreEncryptionCodeCommand {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct UsbInfo {
@@ -408,7 +365,6 @@ impl Command for RequestUsbIdCommand {
         })
     }
 }
-impl BelongsTo<CorePlusCommandSet> for RequestUsbIdCommand {}
 
 /// Represents the status of a baud rate switch command.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -490,12 +446,10 @@ impl Command for SwitchBaudRateCommand {
         }
     }
 }
-impl BelongsTo<CorePlusCommandSet> for SwitchBaudRateCommand {}
 
 #[deprecated(note = "encryption is not supported yet, so this command is not implemented")]
 #[derive(Debug)]
 pub struct SwitchEncryptionKeyCommand;
-impl BelongsTo<CorePlusCommandSet> for SwitchEncryptionKeyCommand {}
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct DataStreamCommand<'a> {
@@ -523,7 +477,6 @@ impl Command for DataStreamCommand<'_> {
         Ok(())
     }
 }
-impl BelongsTo<CorePlusCommandSet> for DataStreamCommand<'_> {}
 
 #[derive(Debug)]
 pub struct BusyCommand;
@@ -543,7 +496,6 @@ impl Command for BusyCommand {
         Ok(())
     }
 }
-impl BelongsTo<CorePlusCommandSet> for BusyCommand {}
 
 #[derive(Debug)]
 pub struct NackCommand;
@@ -563,7 +515,6 @@ impl Command for NackCommand {
         Ok(())
     }
 }
-impl BelongsTo<CorePlusCommandSet> for NackCommand {}
 
 #[derive(Debug)]
 pub struct RequestCommsRevisionCommand;
@@ -599,7 +550,6 @@ impl Command for RequestCommsRevisionCommand {
         ))
     }
 }
-impl BelongsTo<CorePlusCommandSet> for RequestCommsRevisionCommand {}
 
 #[derive(Debug)]
 pub struct ResetDeviceCommand;
@@ -628,7 +578,6 @@ impl Command for ResetDeviceCommand {
         Ok(())
     }
 }
-impl BelongsTo<CorePlusCommandSet> for ResetDeviceCommand {}
 
 #[cfg(test)]
 mod test {
