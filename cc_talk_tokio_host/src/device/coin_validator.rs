@@ -26,20 +26,6 @@ use super::base::{CommandError, DeviceCommon, DeviceResult};
 /// `CoinValidator` implements [`Clone`] and shares its internal state across clones.
 /// This means that polling state and event counters are synchronized between all
 /// cloned instances.
-///
-/// # Example
-///
-/// ```ignore
-/// use cc_talk_tokio_host::device::coin_validator::CoinValidator;
-///
-/// let validator = CoinValidator::new(device, sender);
-///
-/// // Enable coin acceptance
-/// validator.disable_master_inhibit().await?;
-///
-/// // Poll for coin events
-/// let result = validator.poll().await?;
-/// ```
 #[derive(Debug, Clone)]
 pub struct CoinValidator {
     /// The underlying ccTalk device configuration.
@@ -489,10 +475,10 @@ mod tests {
 
         // NOTE: This has to be named, and used later, to prevent it from being dropped instantly.
         let first_guard = validator
-            .try_background_polling(Duration::from_millis(100), 32)
+            .try_background_polling(Duration::from_millis(100), 1)
             .expect("first call should succeed");
 
-        let result = validator.try_background_polling(Duration::from_millis(100), 32);
+        let result = validator.try_background_polling(Duration::from_millis(100), 1);
         assert!(matches!(result, Err(PollingError::AlreadyLeased)));
         drop(first_guard);
     }
@@ -503,12 +489,12 @@ mod tests {
 
         // Make sure to drop the guard
         let guard = validator
-            .try_background_polling(Duration::from_millis(100), 32)
+            .try_background_polling(Duration::from_millis(100), 1)
             .expect("first call should succeed");
         drop(guard);
 
         let new_lease = validator
-            .try_background_polling(Duration::from_millis(100), 32)
+            .try_background_polling(Duration::from_millis(100), 1)
             .expect("should be able to start polling again after drop");
         drop(new_lease);
     }
@@ -519,16 +505,16 @@ mod tests {
         let cloned = validator.clone();
 
         let guard = validator
-            .try_background_polling(Duration::from_millis(100), 32)
+            .try_background_polling(Duration::from_millis(100), 1)
             .expect("first call should succeed");
 
         // Cloned instance should also see the lock as held
-        let result = cloned.try_background_polling(Duration::from_millis(100), 32);
+        let result = cloned.try_background_polling(Duration::from_millis(100), 1);
         assert!(matches!(result, Err(PollingError::AlreadyLeased)));
         drop(guard);
 
         let new_guard = cloned
-            .try_background_polling(Duration::from_millis(100), 32)
+            .try_background_polling(Duration::from_millis(100), 1)
             .expect("clone should be able to start polling after original's guard dropped");
         drop(new_guard);
     }
