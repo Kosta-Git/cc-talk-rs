@@ -7,7 +7,7 @@ use std::{
 
 use cc_talk_core::cc_talk::{BitMask, CoinAcceptorPollResult, CurrencyToken, Device, SorterPath};
 use cc_talk_host::{command::Command, device::device_commands::*};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 use crate::{
     device::base::PollingError, transport::tokio_transport::TransportMessage, util::DropGuard,
@@ -73,7 +73,7 @@ impl CoinValidator {
     /// The event counter tracks the number of coin events that have occurred.
     /// It is automatically updated when calling [`poll`](Self::poll).
     pub fn event_counter(&self) -> u8 {
-        *self.event_counter.lock().expect("should not be poisonned")
+        *self.event_counter.lock().expect("should not be poisoned")
     }
 
     /// Sets the master inhibit status of the coin validator.
@@ -256,7 +256,7 @@ impl CoinValidator {
             .inspect(|result| {
                 self.event_counter
                     .lock()
-                    .expect("should not be poisonned")
+                    .expect("should not be poisoned")
                     .clone_from(&result.event_counter);
             })
     }
@@ -384,6 +384,7 @@ impl CoinValidator {
     ///
     /// * `interval` - The duration between poll requests. Use [`get_polling_priority`](Self::get_polling_priority)
     ///   to get the device-recommended interval.
+    /// * `channel_size` - Capacity of the result channel.
     ///
     /// # Returns
     ///
@@ -409,33 +410,48 @@ impl CoinValidator {
     /// }
     /// // Polling stops automatically when poll_rx is dropped
     /// ```
+    #[must_use = "nothing happens if the result is not used"]
     pub fn try_background_polling(
         &self,
         interval: Duration,
+        channel_size: usize,
     ) -> Result<DropGuard<PollResultReceiver, impl FnOnce(PollResultReceiver)>, PollingError> {
-        let mut is_polling = self.is_polling.lock().expect("should not be poisonned");
+        let mut is_polling = self.is_polling.lock().expect("should not be poisoned");
         if *is_polling {
             return Err(PollingError::AlreadyLeased);
         }
         *is_polling = true;
 
-        let (tx, rx) = mpsc::channel(32);
+        let (tx, rx) = mpsc::channel(channel_size);
 
         let is_polling_arc = Arc::clone(&self.is_polling);
         let cv_clone = self.clone();
+        let (stop_signal, mut stop_receiver) = oneshot::channel();
         let handle = tokio::spawn(async move {
             loop {
-                tokio::time::sleep(interval).await;
                 let poll_result = cv_clone.poll().await;
                 if tx.send(poll_result).await.is_err() {
+                    tracing::error!(
+                        "unable to send poll result, receiver may have been dropped. Stopping background polling."
+                    );
+                    break;
+                }
+                tokio::time::sleep(interval).await;
+                if stop_receiver.try_recv().is_ok() {
+                    tracing::info!("received stop signal, stopping background polling task.");
                     break;
                 }
             }
         });
 
         let rx_with_guard = DropGuard::new(rx, move |_| {
-            handle.abort();
-            let mut is_polling = is_polling_arc.lock().expect("should not be poisonned");
+            if stop_signal.send(()).is_err() {
+                tracing::warn!(
+                    "failed to send stop signal to background polling task, aborting it..."
+                );
+                handle.abort();
+            }
+            let mut is_polling = is_polling_arc.lock().expect("should not be poisoned");
             *is_polling = false;
         });
 
@@ -470,10 +486,10 @@ mod tests {
 
         // NOTE: This has to be named, and used later, to prevent it from being dropped instantly.
         let first_guard = validator
-            .try_background_polling(Duration::from_millis(100))
+            .try_background_polling(Duration::from_millis(100), 32)
             .expect("first call should succeed");
 
-        let result = validator.try_background_polling(Duration::from_millis(100));
+        let result = validator.try_background_polling(Duration::from_millis(100), 32);
         assert!(matches!(result, Err(PollingError::AlreadyLeased)));
         drop(first_guard);
     }
@@ -484,12 +500,12 @@ mod tests {
 
         // Make sure to drop the guard
         let guard = validator
-            .try_background_polling(Duration::from_millis(100))
+            .try_background_polling(Duration::from_millis(100), 32)
             .expect("first call should succeed");
         drop(guard);
 
         let new_lease = validator
-            .try_background_polling(Duration::from_millis(100))
+            .try_background_polling(Duration::from_millis(100), 32)
             .expect("should be able to start polling again after drop");
         drop(new_lease);
     }
@@ -500,16 +516,16 @@ mod tests {
         let cloned = validator.clone();
 
         let guard = validator
-            .try_background_polling(Duration::from_millis(100))
+            .try_background_polling(Duration::from_millis(100), 32)
             .expect("first call should succeed");
 
         // Cloned instance should also see the lock as held
-        let result = cloned.try_background_polling(Duration::from_millis(100));
+        let result = cloned.try_background_polling(Duration::from_millis(100), 32);
         assert!(matches!(result, Err(PollingError::AlreadyLeased)));
         drop(guard);
 
         let new_guard = cloned
-            .try_background_polling(Duration::from_millis(100))
+            .try_background_polling(Duration::from_millis(100), 32)
             .expect("clone should be able to start polling after original's guard dropped");
         drop(new_guard);
     }
