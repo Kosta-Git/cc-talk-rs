@@ -1,4 +1,3 @@
 pub mod device;
 pub mod transport;
-
-pub(crate) mod util;
+pub mod util;
