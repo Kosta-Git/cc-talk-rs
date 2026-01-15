@@ -371,7 +371,7 @@ impl CoinValidator {
     /// * `interval` - The duration between poll requests. Use [`get_polling_priority`](Self::get_polling_priority)
     ///   to get the device-recommended interval.
     /// * `channel_size` - Capacity of the result channel. If the consumer is slower than the
-    ///   polling rate the channel migh tfill up and cause the polling task to block.
+    ///   polling rate the channel might fill up and cause the polling task to block.
     ///
     /// # Returns
     ///
