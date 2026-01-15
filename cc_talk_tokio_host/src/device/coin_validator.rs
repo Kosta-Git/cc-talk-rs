@@ -246,9 +246,9 @@ impl CoinValidator {
             .map_err(CommandError::from)
     }
 
-    pub async fn start_polling(&self) -> Result<mpsc::Receiver<DeviceResult>, CommandError> {
-        Ok(())
-    }
+    // pub async fn start_polling(&self) -> Result<mpsc::Receiver<DeviceResult>, CommandError> {
+    //     Ok(())
+    // }
 }
 
 impl DeviceCommon for CoinValidator {

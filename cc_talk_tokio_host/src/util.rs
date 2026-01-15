@@ -17,18 +17,6 @@ where
     F: FnOnce(T),
 {
     /// Create a new instance of `DropGuard`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # #![allow(unused)]
-    /// #![feature(drop_guard)]
-    ///
-    /// use std::mem::DropGuard;
-    ///
-    /// let value = String::from("Chashu likes tuna");
-    /// let guard = DropGuard::new(value, |s| println!("{s}"));
-    /// ```
     #[must_use]
     pub const fn new(inner: T, f: F) -> Self {
         Self {
@@ -51,10 +39,7 @@ where
     ///
     /// ```rust
     /// # #![allow(unused)]
-    /// #![feature(drop_guard)]
-    ///
-    /// use std::mem::DropGuard;
-    ///
+    /// # use cc_talk_tokio_host::util::DropGuard;
     /// let value = String::from("Nori likes chicken");
     /// let guard = DropGuard::new(value, |s| println!("{s}"));
     /// assert_eq!(DropGuard::into_inner(guard), "Nori likes chicken");
