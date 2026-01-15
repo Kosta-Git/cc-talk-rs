@@ -18,6 +18,7 @@ where
 {
     /// Create a new instance of `DropGuard`.
     #[must_use]
+    #[allow(dead_code)]
     pub const fn new(inner: T, f: F) -> Self {
         Self {
             inner: ManuallyDrop::new(inner),
@@ -45,6 +46,7 @@ where
     /// assert_eq!(DropGuard::into_inner(guard), "Nori likes chicken");
     /// ```
     #[inline]
+    #[allow(dead_code)]
     pub fn into_inner(guard: Self) -> T {
         // First we ensure that dropping the guard will not trigger
         // its destructor
@@ -71,6 +73,7 @@ where
 {
     type Target = T;
 
+    #[allow(clippy::explicit_auto_deref)]
     fn deref(&self) -> &T {
         &*self.inner
     }
@@ -80,6 +83,7 @@ impl<T, F> DerefMut for DropGuard<T, F>
 where
     F: FnOnce(T),
 {
+    #[allow(clippy::explicit_auto_deref)]
     fn deref_mut(&mut self) -> &mut T {
         &mut *self.inner
     }
