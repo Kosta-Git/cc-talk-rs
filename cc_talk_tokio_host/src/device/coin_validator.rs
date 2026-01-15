@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::sync::{Arc, Mutex};
+
 use cc_talk_core::cc_talk::{BitMask, CoinAcceptorPollResult, CurrencyToken, Device, SorterPath};
 use cc_talk_host::{command::Command, device::device_commands::*};
 use tokio::sync::mpsc;
@@ -8,10 +10,12 @@ use crate::transport::tokio_transport::TransportMessage;
 
 use super::base::{CommandError, DeviceCommon, DeviceResult};
 
+#[derive(Debug)]
 pub struct CoinValidator {
     pub device: Device,
     pub sender: mpsc::Sender<TransportMessage>,
-    pub event_counter: u8,
+    event_counter: Arc<Mutex<u8>>,
+    is_polling: Arc<Mutex<bool>>,
 }
 
 impl CoinValidator {
@@ -19,8 +23,13 @@ impl CoinValidator {
         CoinValidator {
             device,
             sender,
-            event_counter: 0,
+            event_counter: Arc::new(Mutex::new(0)),
+            is_polling: Arc::new(Mutex::new(false)),
         }
+    }
+
+    pub fn event_counter(&self) -> u8 {
+        *self.event_counter.lock().expect("should not be poisonned")
     }
 
     pub async fn set_master_inhibit(&self, inhibit: bool) -> DeviceResult<()> {
@@ -146,11 +155,14 @@ impl CoinValidator {
         let response_packet = self
             .send_command(ReadBufferedCreditOrErrorCodeCommand::default())
             .await?;
-        ReadBufferedCreditOrErrorCodeCommand::new(self.event_counter)
+        ReadBufferedCreditOrErrorCodeCommand::new(self.event_counter())
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)
             .inspect(|result| {
-                self.event_counter = result.event_counter;
+                self.event_counter
+                    .lock()
+                    .expect("should not be poisonned")
+                    .clone_from(&result.event_counter);
             })
     }
 
@@ -232,6 +244,10 @@ impl CoinValidator {
         RequestPollingPriorityCommand
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)
+    }
+
+    pub async fn start_polling(&self) -> Result<mpsc::Receiver<DeviceResult>, CommandError> {
+        Ok(())
     }
 }
 

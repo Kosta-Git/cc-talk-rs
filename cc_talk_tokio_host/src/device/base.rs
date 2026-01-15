@@ -49,6 +49,12 @@ pub enum CommandError {
     ParseError(&'static str),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum PollingError {
+    #[error("background polling is already locked by another task")]
+    AlreadyLeased,
+}
+
 impl From<TransportError> for CommandError {
     fn from(error: TransportError) -> Self {
         match error {
