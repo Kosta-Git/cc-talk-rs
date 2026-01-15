@@ -384,7 +384,8 @@ impl CoinValidator {
     ///
     /// * `interval` - The duration between poll requests. Use [`get_polling_priority`](Self::get_polling_priority)
     ///   to get the device-recommended interval.
-    /// * `channel_size` - Capacity of the result channel.
+    /// * `channel_size` - Capacity of the result channel. If the consumer is slower than the
+    ///   polling rate the channel migh tfill up and cause the polling task to block.
     ///
     /// # Returns
     ///
@@ -400,7 +401,7 @@ impl CoinValidator {
     /// # Example
     ///
     /// ```ignore
-    /// let mut poll_rx = validator.try_background_polling(Duration::from_millis(100))?;
+    /// let mut poll_rx = validator.try_background_polling(Duration::from_millis(100), 32)?;
     ///
     /// while let Some(result) = poll_rx.recv().await {
     ///     match result {
@@ -436,11 +437,13 @@ impl CoinValidator {
                     );
                     break;
                 }
-                tokio::time::sleep(interval).await;
+
                 if stop_receiver.try_recv().is_ok() {
                     tracing::info!("received stop signal, stopping background polling task.");
                     break;
                 }
+
+                tokio::time::sleep(interval).await;
             }
         });
 
