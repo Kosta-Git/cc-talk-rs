@@ -158,7 +158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = CurrencyAcceptorPool::builder()
         .add_coin_validator(coin_validator)
         .add_bill_validator(bill_validator)
-        .with_denomination_range(10000, 50000) // 0.01 to 500.00 EUR
+        .with_denomination_range(1, 50000) // 0.01 to 500.00 EUR
         .with_bill_routing_mode(BillRoutingMode::AutoStack)
         .with_polling_interval(Duration::from_millis(100))
         .build_and_initialize()
