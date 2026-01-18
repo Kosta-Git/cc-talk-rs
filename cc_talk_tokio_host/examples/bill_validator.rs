@@ -1,4 +1,11 @@
-use std::time::Duration;
+//! Bill validator example - polls for bill insertions and auto-stacks them.
+//!
+//! Usage: cargo run --example bill_validator [socket_path]
+//!
+//! Arguments:
+//!   socket_path  Path to ccTalk socket (default: /tmp/cctalk.sock)
+
+use std::{env, time::Duration};
 
 use cc_talk_core::cc_talk::{
     Address, BillEvent, BillRouteCode, Category, ChecksumType, CurrencyToken, Device,
@@ -8,178 +15,151 @@ use cc_talk_tokio_host::{
     transport::{retry::RetryConfig, tokio_transport::CcTalkTokioTransport},
 };
 use tokio::sync::mpsc;
-use tracing::{error, info, warn};
+use tracing::{Level, error, info, warn};
+
+fn init_logging() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .with_target(false)
+        .init();
+}
 
 #[tokio::main]
-async fn main() {
-    let subscriber = tracing_subscriber::fmt()
-        .pretty()
-        .with_file(false)
-        .with_line_number(false)
-        .with_thread_ids(false)
-        .with_target(false)
-        .without_time()
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    init_logging();
 
-    info!("💰 ccTalk bill validator example.");
+    let socket_path = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "/tmp/cctalk.sock".to_string());
 
+    info!("Bill Validator Example");
+    info!("Socket: {}", socket_path);
+
+    // Setup transport
     let (tx, rx) = mpsc::channel(32);
-
-    // Make sure you have socat running:
     let transport = CcTalkTokioTransport::new(
         rx,
-        "/tmp/cctalk.sock".to_string(),
+        socket_path,
         Duration::from_millis(100),
         Duration::from_millis(100),
         RetryConfig::default(),
         true,
     );
+
     tokio::spawn(async move {
         if let Err(e) = transport.run().await {
-            tracing::error!("☠️ Error running transport: {}", e);
+            error!("Transport error: {}", e);
         }
     });
     tokio::time::sleep(Duration::from_millis(100)).await;
 
-    // If you don't know the address of your bill validator, you can use the default address for
-    // the BillValidator category.
-    let bill_validator_address = match Category::BillValidator.default_address() {
-        Address::Single(addr) => addr,
-        Address::SingleAndRange(addr, _) => addr,
+    // Create bill validator
+    let address = match Category::BillValidator.default_address() {
+        Address::Single(addr) | Address::SingleAndRange(addr, _) => addr,
     };
-    let mut bill_validator = BillValidator::new(
-        Device::new(
-            bill_validator_address,
-            Category::BillValidator,
-            ChecksumType::Crc16,
-        ),
+    let validator = BillValidator::new(
+        Device::new(address, Category::BillValidator, ChecksumType::Crc16),
         tx,
     );
 
-    info!("📡 Trying to reach bill validator...");
-    match bill_validator.simple_poll().await {
-        Ok(_) => info!("✅ Coin validator is online!"),
-        Err(error) => {
-            error!("☠️ Error reaching coin validator: {}", error);
-            return;
-        }
-    }
+    // Check connectivity
+    info!("Connecting to bill validator...");
+    validator.simple_poll().await?;
+    info!("Connected");
 
-    let manufacturer = bill_validator.get_manufacturer_id().await.unwrap();
-    let serial_number = bill_validator.get_serial_number().await.unwrap();
-    let category = bill_validator.get_category().await.unwrap();
-    let product_code = bill_validator.get_product_code().await.unwrap();
-    let software_revision = bill_validator.get_software_revision().await.unwrap();
+    // Display device info
+    let manufacturer = validator.get_manufacturer_id().await?;
+    let serial = validator.get_serial_number().await?;
+    let product = validator.get_product_code().await?;
+    info!("Device: {} {} (S/N: {})", manufacturer, product, serial);
 
-    info!(
-        "\n\tManufacturer ID: {}\n\tSerial number: {}\n\tCategory: {:?}\n\tProduct code: {}\n\tSoftware revision: {}",
-        manufacturer, serial_number, category, product_code, software_revision
-    );
-
-    let master_inhibit_status = bill_validator.get_master_inhibit_status().await.unwrap();
-    if master_inhibit_status {
-        info!("Master inhibit is ON. Disabling it...");
-        bill_validator.disable_master_inhibit().await.unwrap();
-    } else {
-        info!("Master inhibit is OFF.");
-    }
-
-    let bill_values = bill_validator
+    // Build value lookup table and display configured bills
+    info!("Configured bills:");
+    let bill_values: Vec<(u8, u32)> = validator
         .request_all_bill_id()
-        .await
-        .unwrap()
+        .await?
         .iter()
-        .filter(|entry| entry.1.is_some())
-        .to_owned()
-        .map(|entry| {
-            let bill = entry.1.clone().expect("");
-            match bill {
+        .filter_map(|(pos, token)| {
+            token.as_ref().map(|t| match t {
                 CurrencyToken::Token => {
-                    info!("bill ID {}: Token", entry.0);
-                    (entry.0, 0)
+                    info!("  [{}] Token", pos);
+                    (*pos, 0)
                 }
-                CurrencyToken::Currency(currency_value) => {
-                    info!(
-                        "bill ID {}: {}@{}",
-                        entry.0,
-                        currency_value.country_code(),
-                        currency_value.monetary_value()
-                    );
-                    (entry.0, currency_value.smallest_unit_value())
+                CurrencyToken::Currency(v) => {
+                    info!("  [{}] {}{:.2}", pos, v.country_code(), v.monetary_value());
+                    (*pos, v.smallest_unit_value())
                 }
-            }
+            })
         })
-        .collect::<Vec<_>>();
+        .collect();
 
-    // You could enable/disable some coins based on your needs, by using the coin IDs.
-    let inhibits = bill_validator.get_bill_inhibits().await.unwrap();
-    if inhibits.iter().any(|inhibit| *inhibit) {
-        info!("Some bill inhibits are ON. Disabling them...");
-        bill_validator.set_all_bill_inhibits(false).await.unwrap();
-    }
+    // Enable acceptance
+    validator.disable_master_inhibit().await?;
+    validator.set_all_bill_inhibits(false).await?;
+    info!("Bill acceptance enabled");
 
-    let polling_priority = bill_validator.get_polling_priority().await.unwrap();
-    let delay = polling_priority.as_duration().unwrap();
-    info!(
-        "polling priority: {:?} (delay: {:?})",
-        polling_priority, delay
-    );
+    // Get polling interval
+    let delay = validator
+        .get_polling_priority()
+        .await?
+        .as_duration()
+        .unwrap_or(Duration::from_millis(100));
 
-    let mut event_counter: u8 = 0;
+    info!("Polling (interval: {:?})... Press Ctrl+C to stop", delay);
+
+    // Poll loop
+    let mut last_counter = 0u8;
     loop {
-        match bill_validator.poll().await {
+        match validator.poll().await {
             Ok(poll) => {
-                if event_counter != poll.event_counter {
-                    event_counter = poll.event_counter;
-                    info!("event counter: {}", event_counter);
-                } else {
+                if poll.event_counter == last_counter {
+                    tokio::time::sleep(delay).await;
                     continue;
                 }
+                last_counter = poll.event_counter;
 
-                if !poll.events.is_empty() {
-                    info!(
-                        "===================== [counter {}] =====================",
-                        poll.event_counter
-                    );
-                    for event in poll.events {
-                        match event {
-                            BillEvent::Credit(credit) => {
-                                info!(
-                                    "bill in stacker: {} value {}",
-                                    credit,
-                                    bill_values
-                                        .iter()
-                                        .find(|v| v.0 == credit)
-                                        .map_or(0, |v| v.1)
-                                );
+                for event in poll.events {
+                    match event {
+                        BillEvent::Credit(bill_type) => {
+                            let value = bill_values
+                                .iter()
+                                .find(|(p, _)| *p == bill_type)
+                                .map_or(0, |(_, v)| *v);
+                            info!(
+                                "Bill stacked: position {} (value: {} cents)",
+                                bill_type, value
+                            );
+                        }
+                        BillEvent::PendingCredit(bill_type) => {
+                            let value = bill_values
+                                .iter()
+                                .find(|(p, _)| *p == bill_type)
+                                .map_or(0, |(_, v)| *v);
+                            info!(
+                                "Bill in escrow: position {} (value: {} cents) -> stacking",
+                                bill_type, value
+                            );
+                            if let Err(e) = validator.route_bill(BillRouteCode::Stack).await {
+                                error!("Failed to route bill: {}", e);
                             }
-                            BillEvent::PendingCredit(credit) => {
-                                info!("bill in escrow: {}", credit);
-                                info!("sending route to stacker command");
-                                bill_validator
-                                    .route_bill(BillRouteCode::Stack)
-                                    .await
-                                    .unwrap();
-                            }
-                            BillEvent::Reject(bill_event_reason) => {
-                                warn!("bill rejected: {}", bill_event_reason);
-                            }
-                            BillEvent::FraudAttempt(bill_event_reason) => {
-                                warn!("fraud attempt detected: {}", bill_event_reason);
-                            }
-                            BillEvent::FatalError(bill_event_reason) => {
-                                warn!("fatal error: {}", bill_event_reason);
-                            }
-                            BillEvent::Status(bill_event_reason) => {
-                                warn!("status: {}", bill_event_reason);
-                            }
+                        }
+                        BillEvent::Reject(reason) => {
+                            warn!("Bill rejected: {}", reason);
+                        }
+                        BillEvent::FraudAttempt(reason) => {
+                            warn!("Fraud attempt: {}", reason);
+                        }
+                        BillEvent::FatalError(reason) => {
+                            error!("Fatal error: {}", reason);
+                        }
+                        BillEvent::Status(reason) => {
+                            info!("Status: {}", reason);
                         }
                     }
                 }
             }
-            Err(error) => {
-                error!("command error: {}", error);
+            Err(e) => {
+                error!("Poll error: {}", e);
             }
         }
         tokio::time::sleep(delay).await;

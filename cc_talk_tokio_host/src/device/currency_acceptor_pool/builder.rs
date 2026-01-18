@@ -3,9 +3,9 @@ use std::time::Duration;
 use crate::device::{bill_validator::BillValidator, coin_validator::CoinValidator};
 
 use super::{
+    PoolResult,
     config::{BillRoutingMode, DenominationRange},
     pool::CurrencyAcceptorPool,
-    PoolResult,
 };
 
 /// Builder for constructing a [`CurrencyAcceptorPool`].
@@ -59,7 +59,10 @@ impl CurrencyAcceptorPoolBuilder {
 
     /// Adds multiple coin validators to the pool.
     #[must_use]
-    pub fn add_coin_validators(mut self, validators: impl IntoIterator<Item = CoinValidator>) -> Self {
+    pub fn add_coin_validators(
+        mut self,
+        validators: impl IntoIterator<Item = CoinValidator>,
+    ) -> Self {
         self.coin_validators.extend(validators);
         self
     }
@@ -73,7 +76,10 @@ impl CurrencyAcceptorPoolBuilder {
 
     /// Adds multiple bill validators to the pool.
     #[must_use]
-    pub fn add_bill_validators(mut self, validators: impl IntoIterator<Item = BillValidator>) -> Self {
+    pub fn add_bill_validators(
+        mut self,
+        validators: impl IntoIterator<Item = BillValidator>,
+    ) -> Self {
         self.bill_validators.extend(validators);
         self
     }

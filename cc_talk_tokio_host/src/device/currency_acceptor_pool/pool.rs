@@ -7,6 +7,7 @@ use std::{
 
 use cc_talk_core::cc_talk::{BillEvent, BillRouteCode, CoinEvent, CurrencyToken};
 use tokio::sync::{mpsc, oneshot};
+use tracing::{debug, error, info, instrument, trace, warn};
 
 use crate::{
     device::{
@@ -18,11 +19,11 @@ use crate::{
 };
 
 use super::{
+    PoolError, PoolResult,
     builder::CurrencyAcceptorPoolBuilder,
     config::{BillRoutingMode, DenominationRange, DeviceValueMap},
     device_id::DeviceId,
     poll_result::{CurrencyCredit, PendingBill, PoolPollError, PoolPollResult},
-    PoolError, PoolResult,
 };
 
 type PoolPollReceiver = mpsc::Receiver<PoolPollResult>;
@@ -36,6 +37,19 @@ pub struct PaymentResult {
     pub credits: Vec<CurrencyCredit>,
     /// Whether the full target amount was reached.
     pub target_reached: bool,
+}
+
+/// Progress update during payment acceptance.
+#[derive(Debug, Clone)]
+pub struct PaymentProgress {
+    /// The credit that was just received.
+    pub credit: CurrencyCredit,
+    /// Total value received so far.
+    pub total_received: u32,
+    /// Target value being collected.
+    pub target_value: u32,
+    /// Remaining value needed to reach target.
+    pub remaining: u32,
 }
 
 /// A pool of currency acceptor devices for unified payment handling.
@@ -87,6 +101,16 @@ impl CurrencyAcceptorPool {
     ) -> Self {
         let coin_count = coin_validators.len();
         let bill_count = bill_validators.len();
+
+        debug!(
+            coin_validators = coin_count,
+            bill_validators = bill_count,
+            denomination_min = denomination_range.min,
+            denomination_max = denomination_range.max,
+            bill_routing_mode = ?bill_routing_mode,
+            polling_interval_ms = polling_interval.as_millis() as u64,
+            "creating currency acceptor pool"
+        );
 
         Self {
             coin_validators,
@@ -157,15 +181,25 @@ impl CurrencyAcceptorPool {
     /// Returns an error if:
     /// - The pool has no devices
     /// - All devices fail to respond
+    #[instrument(skip(self), fields(coin_validators = self.coin_validators.len(), bill_validators = self.bill_validators.len()))]
     pub async fn initialize(&mut self) -> PoolResult<()> {
         if self.device_count() == 0 {
+            error!("pool initialization failed: no devices configured");
             return Err(PoolError::NoDevices);
         }
 
+        info!(
+            coin_validators = self.coin_validators.len(),
+            bill_validators = self.bill_validators.len(),
+            "initializing currency acceptor pool"
+        );
+
         // Initialize coin validators
         for (idx, cv) in self.coin_validators.iter().enumerate() {
+            debug!(device_idx = idx, "initializing coin validator");
             let value_map = &mut self.coin_value_maps[idx];
             let mut inhibits = [true; 16]; // Start with all inhibited
+            let mut enabled_count = 0;
 
             for position in 0..16u8 {
                 if let Ok(token) = cv.request_coin_id(position).await
@@ -175,20 +209,40 @@ impl CurrencyAcceptorPool {
                     // Enable positions within denomination range
                     if self.denomination_range.contains(value) {
                         inhibits[position as usize] = false;
+                        enabled_count += 1;
+                        trace!(device_idx = idx, position, value, "coin position enabled");
+                    } else {
+                        trace!(
+                            device_idx = idx,
+                            position, value, "coin position inhibited (outside denomination range)"
+                        );
                     }
                 }
             }
 
             // Set coin inhibits based on denomination range
-            let _ = cv.set_coin_inhibits(inhibits).await;
+            if let Err(e) = cv.set_coin_inhibits(inhibits).await {
+                warn!(device_idx = idx, error = %e, "failed to set coin inhibits");
+            }
             // Enable master inhibit (device is disabled until enable() is called)
-            let _ = cv.enable_master_inhibit().await;
+            if let Err(e) = cv.enable_master_inhibit().await {
+                warn!(device_idx = idx, error = %e, "failed to enable master inhibit on coin validator");
+            }
+
+            info!(
+                device_idx = idx,
+                positions_configured = value_map.len(),
+                positions_enabled = enabled_count,
+                "coin validator initialized"
+            );
         }
 
         // Initialize bill validators
         for (idx, bv) in self.bill_validators.iter().enumerate() {
+            debug!(device_idx = idx, "initializing bill validator");
             let value_map = &mut self.bill_value_maps[idx];
             let mut inhibits = [true; 16]; // Start with all inhibited
+            let mut enabled_count = 0;
 
             for position in 0..16u8 {
                 if let Ok(token) = bv.request_bill_id(position).await
@@ -198,20 +252,45 @@ impl CurrencyAcceptorPool {
                     // Enable positions within denomination range
                     if self.denomination_range.contains(value) {
                         inhibits[position as usize] = false;
+                        enabled_count += 1;
+                        trace!(device_idx = idx, position, value, "bill position enabled");
+                    } else {
+                        trace!(
+                            device_idx = idx,
+                            position, value, "bill position inhibited (outside denomination range)"
+                        );
                     }
                 }
             }
 
             // Set bill inhibits based on denomination range
-            let _ = bv.set_bill_inhibits(inhibits).await;
+            // Bill IDs are 1-indexed, so position 0 in the inhibits array
+            // corresponds to bill ID 1. Rotate left by 1 to align correctly.
+            inhibits.rotate_left(1);
+            if let Err(e) = bv.set_bill_inhibits(inhibits).await {
+                warn!(device_idx = idx, error = %e, "failed to set bill inhibits");
+            }
             // Configure escrow based on routing mode
             let use_escrow = self.bill_routing_mode == BillRoutingMode::Manual;
-            let _ = bv.set_operating_mode(true, use_escrow).await;
+            if let Err(e) = bv.set_operating_mode(true, use_escrow).await {
+                warn!(device_idx = idx, error = %e, use_escrow, "failed to set bill operating mode");
+            }
             // Enable master inhibit (device is disabled until enable() is called)
-            let _ = bv.enable_master_inhibit().await;
+            if let Err(e) = bv.enable_master_inhibit().await {
+                warn!(device_idx = idx, error = %e, "failed to enable master inhibit on bill validator");
+            }
+
+            info!(
+                device_idx = idx,
+                positions_configured = value_map.len(),
+                positions_enabled = enabled_count,
+                use_escrow,
+                "bill validator initialized"
+            );
         }
 
         *self.initialized.lock().expect("should not be poisoned") = true;
+        info!("currency acceptor pool initialization complete");
         Ok(())
     }
 
@@ -219,13 +298,20 @@ impl CurrencyAcceptorPool {
     ///
     /// This disables the master inhibit on all devices, allowing them to
     /// accept coins/bills according to their individual inhibit settings.
+    #[instrument(skip(self))]
     pub async fn enable(&self) -> PoolResult<()> {
-        for cv in &self.coin_validators {
-            let _ = cv.disable_master_inhibit().await;
+        debug!("enabling all devices in pool");
+        for (idx, cv) in self.coin_validators.iter().enumerate() {
+            if let Err(e) = cv.disable_master_inhibit().await {
+                warn!(device_idx = idx, error = %e, "failed to disable master inhibit on coin validator");
+            }
         }
-        for bv in &self.bill_validators {
-            let _ = bv.disable_master_inhibit().await;
+        for (idx, bv) in self.bill_validators.iter().enumerate() {
+            if let Err(e) = bv.disable_master_inhibit().await {
+                warn!(device_idx = idx, error = %e, "failed to disable master inhibit on bill validator");
+            }
         }
+        info!("pool enabled - accepting currency");
         Ok(())
     }
 
@@ -233,13 +319,20 @@ impl CurrencyAcceptorPool {
     ///
     /// This enables the master inhibit on all devices, causing them to
     /// reject all currency.
+    #[instrument(skip(self))]
     pub async fn disable(&self) -> PoolResult<()> {
-        for cv in &self.coin_validators {
-            let _ = cv.enable_master_inhibit().await;
+        debug!("disabling all devices in pool");
+        for (idx, cv) in self.coin_validators.iter().enumerate() {
+            if let Err(e) = cv.enable_master_inhibit().await {
+                warn!(device_idx = idx, error = %e, "failed to enable master inhibit on coin validator");
+            }
         }
-        for bv in &self.bill_validators {
-            let _ = bv.enable_master_inhibit().await;
+        for (idx, bv) in self.bill_validators.iter().enumerate() {
+            if let Err(e) = bv.enable_master_inhibit().await {
+                warn!(device_idx = idx, error = %e, "failed to enable master inhibit on bill validator");
+            }
         }
+        info!("pool disabled - rejecting currency");
         Ok(())
     }
 
@@ -267,12 +360,25 @@ impl CurrencyAcceptorPool {
                         if let CoinEvent::Credit(credit) = event {
                             let position = credit.credit;
                             if let Some(&value) = self.coin_value_maps[idx].get(&position) {
+                                info!(
+                                    device = %device_id,
+                                    position,
+                                    value,
+                                    "coin credit received"
+                                );
                                 result.add_credit(CurrencyCredit::new(value, device_id, position));
+                            } else {
+                                warn!(
+                                    device = %device_id,
+                                    position,
+                                    "coin credit received for unknown position"
+                                );
                             }
                         }
                     }
                 }
                 Err(e) => {
+                    debug!(device = %device_id, error = %e, "coin validator poll error");
                     result.add_error(PoolPollError::new(device_id, e));
                 }
             }
@@ -288,20 +394,44 @@ impl CurrencyAcceptorPool {
                         match event {
                             BillEvent::Credit(bill_type) => {
                                 if let Some(&value) = self.bill_value_maps[idx].get(bill_type) {
+                                    info!(
+                                        device = %device_id,
+                                        bill_type,
+                                        value,
+                                        "bill credit received"
+                                    );
                                     result.add_credit(CurrencyCredit::new(
                                         value, device_id, *bill_type,
                                     ));
+                                } else {
+                                    warn!(
+                                        device = %device_id,
+                                        bill_type,
+                                        "bill credit received for unknown position"
+                                    );
                                 }
                             }
                             BillEvent::PendingCredit(bill_type) => {
                                 self.handle_pending_bill(bv, idx, *bill_type, &mut result)
                                     .await;
                             }
-                            _ => {}
+                            BillEvent::Reject(reason) => {
+                                warn!(device = %device_id, reason = %reason, "bill rejected");
+                            }
+                            BillEvent::FraudAttempt(reason) => {
+                                warn!(device = %device_id, reason = %reason, "bill fraud attempt detected");
+                            }
+                            BillEvent::FatalError(reason) => {
+                                error!(device = %device_id, reason = %reason, "bill validator fatal error");
+                            }
+                            BillEvent::Status(reason) => {
+                                info!(device = %device_id, reason = %reason, "bill validator status");
+                            }
                         }
                     }
                 }
                 Err(e) => {
+                    debug!(device = %device_id, error = %e, "bill validator poll error");
                     result.add_error(PoolPollError::new(device_id, e));
                 }
             }
@@ -326,15 +456,34 @@ impl CurrencyAcceptorPool {
 
         match self.bill_routing_mode {
             BillRoutingMode::AutoStack => {
-                // Automatically accept the bill
-                let _ = bv.route_bill(BillRouteCode::Stack).await;
+                info!(
+                    device = %device_id,
+                    bill_type,
+                    value,
+                    "auto-stacking pending bill"
+                );
+                if let Err(e) = bv.route_bill(BillRouteCode::Stack).await {
+                    error!(device = %device_id, error = %e, "failed to auto-stack bill");
+                }
             }
             BillRoutingMode::AutoReturn => {
-                // Automatically return the bill
-                let _ = bv.route_bill(BillRouteCode::Return).await;
+                info!(
+                    device = %device_id,
+                    bill_type,
+                    value,
+                    "auto-returning pending bill"
+                );
+                if let Err(e) = bv.route_bill(BillRouteCode::Return).await {
+                    error!(device = %device_id, error = %e, "failed to auto-return bill");
+                }
             }
             BillRoutingMode::Manual => {
-                // Add to pending bills for manual decision
+                info!(
+                    device = %device_id,
+                    bill_type,
+                    value,
+                    "bill held in escrow for manual routing"
+                );
                 result.add_pending_bill(PendingBill::new(value, device_id, bill_type));
             }
         }
@@ -348,18 +497,21 @@ impl CurrencyAcceptorPool {
     ///
     /// * `pending_bill` - The pending bill to route
     /// * `accept` - `true` to accept (stack) the bill, `false` to reject (return) it
+    #[instrument(skip(self, pending_bill), fields(device = %pending_bill.source, bill_type = pending_bill.bill_type, value = pending_bill.value))]
     pub async fn route_pending_bill(
         &self,
         pending_bill: &PendingBill,
         accept: bool,
     ) -> PoolResult<()> {
         let DeviceId::BillValidator(idx) = pending_bill.source else {
+            error!("route_pending_bill called with non-bill-validator source");
             return Err(PoolError::BillRoutingFailed(
                 "source is not a bill validator".to_string(),
             ));
         };
 
         let Some(bv) = self.bill_validators.get(idx) else {
+            error!(device_idx = idx, "bill validator not found");
             return Err(PoolError::BillRoutingFailed(format!(
                 "bill validator {} not found",
                 idx
@@ -372,21 +524,35 @@ impl CurrencyAcceptorPool {
             BillRouteCode::Return
         };
 
-        bv.route_bill(route_code)
-            .await
-            .map_err(|e| PoolError::BillRoutingFailed(e.to_string()))?;
+        info!(
+            accept,
+            route = if accept { "stack" } else { "return" },
+            "routing pending bill"
+        );
+
+        bv.route_bill(route_code).await.map_err(|e| {
+            error!(error = %e, "bill routing failed");
+            PoolError::BillRoutingFailed(e.to_string())
+        })?;
 
         Ok(())
     }
 
     /// Resets all devices in the pool.
+    #[instrument(skip(self))]
     pub async fn reset(&self) -> PoolResult<()> {
-        for cv in &self.coin_validators {
-            let _ = cv.reset_device().await;
+        info!("resetting all devices in pool");
+        for (idx, cv) in self.coin_validators.iter().enumerate() {
+            if let Err(e) = cv.reset_device().await {
+                warn!(device_idx = idx, error = %e, "failed to reset coin validator");
+            }
         }
-        for bv in &self.bill_validators {
-            let _ = bv.reset_device().await;
+        for (idx, bv) in self.bill_validators.iter().enumerate() {
+            if let Err(e) = bv.reset_device().await {
+                warn!(device_idx = idx, error = %e, "failed to reset bill validator");
+            }
         }
+        info!("all devices reset");
         Ok(())
     }
 
@@ -419,9 +585,8 @@ impl CurrencyAcceptorPool {
         target_value: u32,
         timeout: Duration,
     ) -> PoolResult<PaymentResult> {
-        // Create an unused cancel channel
         let (_cancel_tx, cancel_rx) = oneshot::channel();
-        self.accept_payment_with_cancel(target_value, timeout, cancel_rx)
+        self.accept_payment_with_progress(target_value, timeout, cancel_rx, None)
             .await
     }
 
@@ -446,17 +611,111 @@ impl CurrencyAcceptorPool {
         &self,
         target_value: u32,
         timeout: Duration,
-        mut cancel_rx: oneshot::Receiver<()>,
+        cancel_rx: oneshot::Receiver<()>,
     ) -> PoolResult<PaymentResult> {
+        self.accept_payment_with_progress(target_value, timeout, cancel_rx, None)
+            .await
+    }
+
+    /// Accepts a payment with progress reporting and cancellation support.
+    ///
+    /// This is the most flexible payment acceptance method, providing both
+    /// progress updates and cancellation support.
+    /// The pool is always disabled when this method returns, regardless of success or error.
+    ///
+    /// # Arguments
+    ///
+    /// * `target_value` - The target payment amount in smallest currency units
+    /// * `timeout` - Maximum duration to wait for payment
+    /// * `cancel_rx` - A oneshot receiver that cancels the payment when triggered
+    /// * `progress_tx` - Optional sender for receiving progress updates
+    ///
+    /// # Progress Updates
+    ///
+    /// If `progress_tx` is provided, a [`PaymentProgress`] is sent each time a
+    /// credit is received, allowing the caller to update UI or track payment status.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let (cancel_tx, cancel_rx) = oneshot::channel();
+    /// let (progress_tx, mut progress_rx) = mpsc::channel(16);
+    ///
+    /// // Spawn a task to handle progress updates
+    /// tokio::spawn(async move {
+    ///     while let Some(progress) = progress_rx.recv().await {
+    ///         println!("Received {} cents, {} remaining",
+    ///             progress.credit.value, progress.remaining);
+    ///     }
+    /// });
+    ///
+    /// let result = pool.accept_payment_with_progress(
+    ///     500,
+    ///     Duration::from_secs(30),
+    ///     cancel_rx,
+    ///     Some(progress_tx),
+    /// ).await?;
+    /// ```
+    #[instrument(skip(self, cancel_rx, progress_tx), fields(target_value, timeout_secs = timeout.as_secs()))]
+    pub async fn accept_payment_with_progress(
+        &self,
+        target_value: u32,
+        timeout: Duration,
+        mut cancel_rx: oneshot::Receiver<()>,
+        progress_tx: Option<mpsc::Sender<PaymentProgress>>,
+    ) -> PoolResult<PaymentResult> {
+        info!(
+            target_value,
+            timeout_ms = timeout.as_millis() as u64,
+            "starting payment acceptance"
+        );
+
         // Enable the pool
         self.enable().await?;
 
         let result = self
-            .accept_payment_inner(target_value, timeout, &mut cancel_rx)
+            .accept_payment_inner(target_value, timeout, &mut cancel_rx, progress_tx)
             .await;
 
         // Always disable the pool, regardless of success or error
         let _ = self.disable().await;
+
+        match &result {
+            Ok(payment) => {
+                info!(
+                    total_received = payment.total_received,
+                    credits_count = payment.credits.len(),
+                    "payment completed successfully"
+                );
+            }
+            Err(PoolError::PaymentTimeout {
+                target,
+                received,
+                credits,
+            }) => {
+                warn!(
+                    target,
+                    received,
+                    credits_count = credits.len(),
+                    "payment timed out"
+                );
+            }
+            Err(PoolError::PaymentCancelled {
+                target,
+                received,
+                credits,
+            }) => {
+                info!(
+                    target,
+                    received,
+                    credits_count = credits.len(),
+                    "payment cancelled"
+                );
+            }
+            Err(e) => {
+                error!(error = %e, "payment failed with unexpected error");
+            }
+        }
 
         result
     }
@@ -467,6 +726,7 @@ impl CurrencyAcceptorPool {
         target_value: u32,
         timeout: Duration,
         cancel_rx: &mut oneshot::Receiver<()>,
+        progress_tx: Option<mpsc::Sender<PaymentProgress>>,
     ) -> PoolResult<PaymentResult> {
         let start = std::time::Instant::now();
         let mut total_received = 0u32;
@@ -475,6 +735,7 @@ impl CurrencyAcceptorPool {
         loop {
             // Check for cancellation
             if cancel_rx.try_recv().is_ok() {
+                debug!(total_received, "payment cancellation signal received");
                 return Err(PoolError::PaymentCancelled {
                     target: target_value,
                     received: total_received,
@@ -492,6 +753,10 @@ impl CurrencyAcceptorPool {
                     });
                 }
 
+                debug!(
+                    elapsed_ms = start.elapsed().as_millis() as u64,
+                    total_received, "payment timeout reached"
+                );
                 return Err(PoolError::PaymentTimeout {
                     target: target_value,
                     received: total_received,
@@ -504,11 +769,31 @@ impl CurrencyAcceptorPool {
 
             for credit in poll_result.credits {
                 total_received += credit.value;
+                let remaining = target_value.saturating_sub(total_received);
+
+                debug!(
+                    credit_value = credit.value,
+                    total_received, remaining, "credit added to payment"
+                );
+
+                // Send progress update if channel provided
+                if let Some(tx) = &progress_tx {
+                    let progress = PaymentProgress {
+                        credit: credit.clone(),
+                        total_received,
+                        target_value,
+                        remaining,
+                    };
+                    // Don't fail payment if progress receiver is dropped
+                    let _ = tx.try_send(progress);
+                }
+
                 credits.push(credit);
             }
 
             // Check if target reached
             if total_received >= target_value {
+                debug!(total_received, target_value, "payment target reached");
                 return Ok(PaymentResult {
                     total_received,
                     credits,
@@ -546,9 +831,16 @@ impl CurrencyAcceptorPool {
     ) -> Result<DropGuard<PoolPollReceiver, impl FnOnce(PoolPollReceiver)>, PollingError> {
         let mut is_polling = self.is_polling.lock().expect("should not be poisoned");
         if *is_polling {
+            warn!("background polling already active");
             return Err(PollingError::AlreadyLeased);
         }
         *is_polling = true;
+
+        info!(
+            channel_size,
+            polling_interval_ms = self.polling_interval.as_millis() as u64,
+            "starting background polling"
+        );
 
         let (tx, rx) = mpsc::channel(channel_size);
 
@@ -560,14 +852,14 @@ impl CurrencyAcceptorPool {
             loop {
                 let poll_result = pool_clone.poll().await;
                 if tx.send(poll_result).await.is_err() {
-                    tracing::error!(
+                    error!(
                         "unable to send poll result, receiver may have been dropped. Stopping background polling."
                     );
                     break;
                 }
 
                 if stop_receiver.try_recv().is_ok() {
-                    tracing::info!("received stop signal, stopping background polling task.");
+                    info!("received stop signal, stopping background polling task.");
                     break;
                 }
 
@@ -577,13 +869,12 @@ impl CurrencyAcceptorPool {
 
         let rx_with_guard = DropGuard::new(rx, move |_| {
             if stop_signal.send(()).is_err() {
-                tracing::warn!(
-                    "failed to send stop signal to background polling task, aborting it..."
-                );
+                warn!("failed to send stop signal to background polling task, aborting it...");
                 handle.abort();
             }
             let mut is_polling = is_polling_arc.lock().expect("should not be poisoned");
             *is_polling = false;
+            info!("background polling stopped");
         });
 
         Ok(rx_with_guard)

@@ -31,14 +31,14 @@
 mod builder;
 mod config;
 mod device_id;
-mod pool;
 mod poll_result;
+mod pool;
 
 pub use builder::CurrencyAcceptorPoolBuilder;
 pub use config::{BillRoutingMode, DenominationRange, DeviceValueMap};
 pub use device_id::DeviceId;
 pub use poll_result::{CurrencyCredit, PendingBill, PoolPollError, PoolPollResult};
-pub use pool::CurrencyAcceptorPool;
+pub use pool::{CurrencyAcceptorPool, PaymentProgress, PaymentResult};
 
 use crate::device::base::{CommandError, PollingError};
 use thiserror::Error;

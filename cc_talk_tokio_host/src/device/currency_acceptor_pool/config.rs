@@ -33,7 +33,10 @@ impl DenominationRange {
 
 impl Default for DenominationRange {
     fn default() -> Self {
-        Self { min: 0, max: u32::MAX }
+        Self {
+            min: 0,
+            max: u32::MAX,
+        }
     }
 }
 
