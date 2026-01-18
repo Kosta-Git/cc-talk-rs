@@ -13,7 +13,7 @@ use cc_talk_host::{
 };
 use thiserror::Error;
 use tokio::sync::{mpsc::Sender, oneshot};
-use tracing::instrument;
+use tracing::{debug, instrument, trace, warn};
 
 use crate::transport::tokio_transport::{TransportError, TransportMessage};
 
@@ -116,58 +116,79 @@ pub trait DeviceCommon {
     }
 
     async fn simple_poll(&self) -> Result<(), CommandError> {
+        trace!("sending simple poll");
         let response_packet = self.send_command(SimplePollCommand).await?;
         SimplePollCommand
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)
-            .map(|_| ())
+            .map(|_| ())?;
+        trace!("simple poll successful");
+        Ok(())
     }
 
     async fn get_manufacturer_id(&self) -> Result<Manufacturer, CommandError> {
+        trace!("requesting manufacturer ID");
         let response_packet = self.send_command(RequestManufacturerIdCommand).await?;
-        RequestManufacturerIdCommand
+        let manufacturer = RequestManufacturerIdCommand
             .parse_response(response_packet.get_data()?)
-            .map_err(CommandError::from)
+            .map_err(CommandError::from)?;
+        debug!(manufacturer = ?manufacturer, "manufacturer ID received");
+        Ok(manufacturer)
     }
 
     async fn get_category(&self) -> Result<Category, CommandError> {
+        trace!("requesting equipment category");
         let response_packet = self
             .send_command(RequestEquipementCategoryIdCommand)
             .await?;
 
-        RequestEquipementCategoryIdCommand
+        let category = RequestEquipementCategoryIdCommand
             .parse_response(response_packet.get_data()?)
-            .map_err(CommandError::from)
+            .map_err(CommandError::from)?;
+        debug!(category = ?category, "equipment category received");
+        Ok(category)
     }
 
     async fn get_product_code(&self) -> Result<String, CommandError> {
+        trace!("requesting product code");
         let response_packet = self.send_command(RequestProductCodeCommand).await?;
-        RequestProductCodeCommand
+        let product_code = RequestProductCodeCommand
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)
-            .map(|s| s.to_string())
+            .map(|s| s.to_string())?;
+        debug!(product_code = %product_code, "product code received");
+        Ok(product_code)
     }
 
     async fn get_serial_number(&self) -> Result<SerialCode, CommandError> {
+        trace!("requesting serial number");
         let response_packet = self.send_command(RequestSerialNumberCommand).await?;
-        RequestSerialNumberCommand
+        let serial = RequestSerialNumberCommand
             .parse_response(response_packet.get_data()?)
-            .map_err(CommandError::from)
+            .map_err(CommandError::from)?;
+        debug!(serial = ?serial, "serial number received");
+        Ok(serial)
     }
 
     async fn get_software_revision(&self) -> Result<String, CommandError> {
+        trace!("requesting software revision");
         let response_packet = self.send_command(RequestSoftwareRevisionCommand).await?;
-        RequestSoftwareRevisionCommand
+        let revision = RequestSoftwareRevisionCommand
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)
-            .map(|s| s.to_string())
+            .map(|s| s.to_string())?;
+        debug!(revision = %revision, "software revision received");
+        Ok(revision)
     }
 
     async fn reset_device(&self) -> Result<(), CommandError> {
+        warn!("resetting device");
         let response_packet = self.send_command(ResetDeviceCommand).await?;
         ResetDeviceCommand
             .parse_response(response_packet.get_data()?)
             .map_err(CommandError::from)
-            .map(|_| ())
+            .map(|_| ())?;
+        debug!("device reset complete");
+        Ok(())
     }
 }

@@ -22,6 +22,9 @@ name = "coin_validator"
 [[example]]
 name = "bill_validator"
 
+[[example]]
+name = "currency_acceptor_pool"
+
 [dependencies]
 cc_talk_core = { path = "../cc_talk_core", features = ["std"] }
 cc_talk_host = { path = "../cc_talk_host", features = ["tracing", "std"] }

@@ -1,4 +1,11 @@
-use std::time::Duration;
+//! Coin validator example - polls for coin insertions and displays events.
+//!
+//! Usage: cargo run --example coin_validator [socket_path]
+//!
+//! Arguments:
+//!   socket_path  Path to ccTalk socket (default: /tmp/cctalk.sock)
+
+use std::{env, time::Duration};
 
 use cc_talk_core::cc_talk::{Address, Category, ChecksumType, CoinEvent, CurrencyToken, Device};
 use cc_talk_tokio_host::{
@@ -6,164 +13,128 @@ use cc_talk_tokio_host::{
     transport::{retry::RetryConfig, tokio_transport::CcTalkTokioTransport},
 };
 use tokio::sync::mpsc;
-use tracing::{error, info};
+use tracing::{Level, error, info, warn};
+
+fn init_logging() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .with_target(false)
+        .init();
+}
 
 #[tokio::main]
-async fn main() {
-    let subscriber = tracing_subscriber::fmt()
-        .pretty()
-        .with_file(false)
-        .with_line_number(false)
-        .with_thread_ids(false)
-        .with_target(false)
-        .without_time()
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    init_logging();
 
-    info!("💰 ccTalk coin validator example.");
+    let socket_path = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "/tmp/cctalk.sock".to_string());
 
+    info!("Coin Validator Example");
+    info!("Socket: {}", socket_path);
+
+    // Setup transport
     let (tx, rx) = mpsc::channel(32);
-
-    // Make sure you have socat running:
     let transport = CcTalkTokioTransport::new(
         rx,
-        "/tmp/cctalk.sock".to_string(),
+        socket_path,
         Duration::from_millis(100),
         Duration::from_millis(100),
         RetryConfig::default(),
         true,
     );
+
     tokio::spawn(async move {
         if let Err(e) = transport.run().await {
-            tracing::error!("☠️ Error running transport: {}", e);
+            error!("Transport error: {}", e);
         }
     });
     tokio::time::sleep(Duration::from_millis(100)).await;
 
-    // If you don't know the address of your coin validator, you can use the default address for
-    // the CoinAcceptor category.
-    let coin_validator_address = match Category::CoinAcceptor.default_address() {
-        Address::Single(addr) => addr,
-        Address::SingleAndRange(addr, _) => addr,
+    // Create coin validator
+    let address = match Category::CoinAcceptor.default_address() {
+        Address::Single(addr) | Address::SingleAndRange(addr, _) => addr,
     };
-    let mut coin_validator = CoinValidator::new(
-        Device::new(
-            coin_validator_address,
-            Category::CoinAcceptor,
-            ChecksumType::Crc8,
-        ),
+    let validator = CoinValidator::new(
+        Device::new(address, Category::CoinAcceptor, ChecksumType::Crc8),
         tx,
     );
 
-    info!("📡 Trying to reach coin validator...");
-    match coin_validator.simple_poll().await {
-        Ok(_) => info!("✅ Coin validator is online!"),
-        Err(error) => {
-            error!("☠️ Error reaching coin validator: {}", error);
-            return;
+    // Check connectivity
+    info!("Connecting to coin validator...");
+    validator.simple_poll().await?;
+    info!("Connected");
+
+    // Display device info
+    let manufacturer = validator.get_manufacturer_id().await?;
+    let serial = validator.get_serial_number().await?;
+    let product = validator.get_product_code().await?;
+    info!("Device: {} {} (S/N: {})", manufacturer, product, serial);
+
+    // Display configured coins
+    info!("Configured coins:");
+    for (pos, token) in validator
+        .request_all_coin_id()
+        .await?
+        .iter()
+        .filter_map(|(p, t)| t.as_ref().map(|t| (*p, t)))
+    {
+        match token {
+            CurrencyToken::Token => info!("  [{}] Token", pos),
+            CurrencyToken::Currency(v) => {
+                info!("  [{}] {}{:.2}", pos, v.country_code(), v.monetary_value())
+            }
         }
     }
 
-    let manufacturer = coin_validator.get_manufacturer_id().await.unwrap();
-    let serial_number = coin_validator.get_serial_number().await.unwrap();
-    let category = coin_validator.get_category().await.unwrap();
-    let product_code = coin_validator.get_product_code().await.unwrap();
-    let software_revision = coin_validator.get_software_revision().await.unwrap();
+    // Enable acceptance
+    validator.disable_master_inhibit().await?;
+    validator.set_all_coin_inhibits(false).await?;
+    info!("Coin acceptance enabled");
 
-    info!(
-        "\n\tManufacturer ID: {}\n\tSerial number: {}\n\tCategory: {:?}\n\tProduct code: {}\n\tSoftware revision: {}",
-        manufacturer, serial_number, category, product_code, software_revision
-    );
+    // Get polling interval
+    let delay = validator
+        .get_polling_priority()
+        .await?
+        .as_duration()
+        .unwrap_or(Duration::from_millis(100));
 
-    let master_inhibit_status = coin_validator.get_master_inhibit_status().await.unwrap();
-    if master_inhibit_status {
-        info!("Master inhibit is ON. Disabling it...");
-        coin_validator.disable_master_inhibit().await.unwrap();
-    } else {
-        info!("Master inhibit is OFF.");
-    }
+    info!("Polling (interval: {:?})... Press Ctrl+C to stop", delay);
 
-    coin_validator
-        .request_all_coin_id()
-        .await
-        .unwrap()
-        .iter()
-        .filter(|entry| entry.1.is_some())
-        .to_owned()
-        .for_each(|entry| {
-            let coin = entry.1.clone().expect("");
-            match coin {
-                CurrencyToken::Token => {
-                    info!("coin ID {}: Token", entry.0);
-                }
-                CurrencyToken::Currency(currency_value) => {
-                    info!(
-                        "coin ID {}: {}@{}",
-                        entry.0,
-                        currency_value.country_code(),
-                        currency_value.monetary_value()
-                    );
-                }
-            }
-        });
-
-    // You could enable/disable some coins based on your needs, by using the coin IDs.
-    let coin_inhibits = coin_validator.get_coin_inhibits().await.unwrap();
-    if coin_inhibits.iter().any(|inhibit| *inhibit) {
-        info!("Some coin inhibits are ON. Disabling them...");
-        coin_validator.set_all_coin_inhibits(false).await.unwrap();
-    }
-
-    let polling_priority = coin_validator.get_polling_priority().await.unwrap();
-    let delay = polling_priority.as_duration().unwrap();
-    info!(
-        "polling priority: {:?} (delay: {:?})",
-        polling_priority, delay
-    );
-
-    let mut event_counter: u8 = 0;
+    // Poll loop
+    let mut last_counter = 0u8;
     loop {
-        match coin_validator.poll().await {
+        match validator.poll().await {
             Ok(poll) => {
-                if event_counter != poll.event_counter {
-                    event_counter = poll.event_counter;
-                    info!("event counter: {}", event_counter);
-                } else {
+                if poll.event_counter == last_counter {
+                    tokio::time::sleep(delay).await;
                     continue;
                 }
+                last_counter = poll.event_counter;
 
-                if !poll.events.is_empty() {
-                    info!(
-                        "===================== [counter {}] =====================",
-                        poll.event_counter
-                    );
-                    if poll.lost_events > 0 {
-                        error!("lost events: {}", poll.lost_events);
-                    }
-                    for event in poll.events {
-                        match event {
-                            CoinEvent::Error(coin_acceptor_error) => {
-                                error!(
-                                    "error {}: {}",
-                                    coin_acceptor_error as u8,
-                                    coin_acceptor_error.description()
-                                );
-                            }
-                            CoinEvent::Credit(coin_credit) => {
-                                info!(
-                                    "coin {} in sorter {:?} ",
-                                    coin_credit.credit, coin_credit.sorter_path
-                                )
-                            }
-                            CoinEvent::Reset => {
-                                info!("coin validator reset");
-                            }
+                if poll.lost_events > 0 {
+                    warn!("Lost {} events", poll.lost_events);
+                }
+
+                for event in poll.events {
+                    match event {
+                        CoinEvent::Credit(credit) => {
+                            info!(
+                                "Coin accepted: position {} -> path {:?}",
+                                credit.credit, credit.sorter_path
+                            );
+                        }
+                        CoinEvent::Error(e) => {
+                            warn!("Error: {}", e.description());
+                        }
+                        CoinEvent::Reset => {
+                            info!("Device reset detected");
                         }
                     }
                 }
             }
-            Err(error) => {
-                error!("command error: {}", error);
+            Err(e) => {
+                error!("Poll error: {}", e);
             }
         }
         tokio::time::sleep(delay).await;

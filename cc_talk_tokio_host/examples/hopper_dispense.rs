@@ -1,4 +1,12 @@
-use std::time::Duration;
+//! Hopper dispense example - dispenses coins from a hopper.
+//!
+//! Usage: cargo run --example hopper_dispense [coins] [socket_path]
+//!
+//! Arguments:
+//!   coins        Number of coins to dispense (default: 3)
+//!   socket_path  Path to ccTalk socket (default: /tmp/cctalk.sock)
+
+use std::{env, time::Duration};
 
 use cc_talk_core::cc_talk::{Category, ChecksumType, Device};
 use cc_talk_tokio_host::{
@@ -6,79 +14,103 @@ use cc_talk_tokio_host::{
     transport::{retry::RetryConfig, tokio_transport::CcTalkTokioTransport},
 };
 use tokio::sync::mpsc;
-use tracing::{error, info};
+use tracing::{Level, error, info};
+
+fn init_logging() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .with_target(false)
+        .init();
+}
+
+fn print_usage() {
+    eprintln!("Usage: hopper_dispense [coins] [socket_path]");
+    eprintln!();
+    eprintln!("Arguments:");
+    eprintln!("  coins        Number of coins to dispense (default: 3)");
+    eprintln!("  socket_path  Path to ccTalk socket (default: /tmp/cctalk.sock)");
+}
 
 #[tokio::main]
-async fn main() {
-    let subscriber = tracing_subscriber::fmt()
-        .pretty()
-        .with_file(false)
-        .with_line_number(false)
-        .with_thread_ids(false)
-        .with_target(false)
-        .without_time()
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    init_logging();
 
-    info!("💰 ccTalk payout example.");
+    let args: Vec<String> = env::args().collect();
 
+    // Parse arguments
+    let coins: u8 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(3);
+    let socket_path = args
+        .get(2)
+        .cloned()
+        .unwrap_or_else(|| "/tmp/cctalk.sock".to_string());
+
+    if args.iter().any(|a| a == "--help" || a == "-h") {
+        print_usage();
+        return Ok(());
+    }
+
+    info!("Hopper Dispense Example");
+    info!("Socket: {}", socket_path);
+    info!("Coins to dispense: {}", coins);
+
+    // Setup transport
     let (tx, rx) = mpsc::channel(32);
-
-    // Make sure you have socat running:
     let transport = CcTalkTokioTransport::new(
         rx,
-        "/tmp/cctalk.sock".to_string(),
+        socket_path,
         Duration::from_millis(100),
         Duration::from_millis(100),
         RetryConfig::default(),
         true,
     );
+
     tokio::spawn(async move {
         if let Err(e) = transport.run().await {
-            tracing::error!("☠️ Error running transport: {}", e);
+            error!("Transport error: {}", e);
         }
     });
     tokio::time::sleep(Duration::from_millis(100)).await;
 
+    // Create hopper device (address 3 is common for hoppers)
     let hopper = PayoutDevice::new(Device::new(3, Category::Payout, ChecksumType::Crc8), tx);
 
-    info!("📡 Trying to reach hopper...");
-    match hopper.simple_poll().await {
-        Ok(_) => info!("✅ Hopper is online!"),
-        Err(error) => {
-            error!("☠️ Error reaching hopper: {}", error);
-            return;
-        }
-    }
+    // Check connectivity
+    info!("Connecting to hopper...");
+    hopper.simple_poll().await?;
+    info!("Connected");
 
-    let product_code = hopper.get_product_code().await.unwrap();
+    // Display device info
+    let manufacturer = hopper.get_manufacturer_id().await?;
+    let serial = hopper.get_serial_number().await?;
+    info!("Device: {} (S/N: {})", manufacturer, serial);
 
-    info!("Product Code: {}", product_code);
+    // Enable and dispense
+    hopper.enable_hopper().await?;
+    info!("Hopper enabled");
 
-    info!(
-        "manufacturer: {}",
-        hopper.get_manufacturer_id().await.unwrap()
-    );
-    info!("serial: {}", hopper.get_serial_number().await.unwrap());
+    hopper.payout_serial_number(coins).await?;
+    info!("Dispensing {} coins...", coins);
 
-    let _ = hopper.enable_hopper().await;
-    let _ = hopper.payout_serial_number(3).await;
-
-    let mut remaining = u8::MAX;
-
-    while remaining > 0 {
+    // Monitor payout status
+    loop {
         match hopper.get_payout_status().await {
             Ok(status) => {
-                info!("Hopper Status: {}", status);
-                remaining = status.coins_remaining;
+                info!("Status: {} coins remaining", status.coins_remaining);
+                if status.coins_remaining == 0 {
+                    break;
+                }
             }
             Err(e) => {
-                error!("Error getting payout status: {}", e);
+                error!("Status error: {}", e);
+                break;
             }
         }
-        tokio::time::sleep(Duration::from_millis(1000)).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
     }
-    let _ = hopper.disable_hopper().await;
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    hopper.disable_hopper().await?;
+    info!("Hopper disabled");
+    info!("Dispense complete");
+
+    Ok(())
 }

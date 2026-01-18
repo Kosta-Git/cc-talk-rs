@@ -1,4 +1,11 @@
-use std::time::Duration;
+//! Hopper info example - retrieves and displays hopper device information.
+//!
+//! Usage: cargo run --example retrieve_hopper_info [socket_path]
+//!
+//! Arguments:
+//!   socket_path  Path to ccTalk socket (default: /tmp/cctalk.sock)
+
+use std::{env, time::Duration};
 
 use cc_talk_core::cc_talk::{Category, ChecksumType, Device};
 use cc_talk_tokio_host::{
@@ -6,60 +13,65 @@ use cc_talk_tokio_host::{
     transport::{retry::RetryConfig, tokio_transport::CcTalkTokioTransport},
 };
 use tokio::sync::mpsc;
-use tracing::{error, info};
+use tracing::{Level, error, info};
+
+fn init_logging() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .with_target(false)
+        .init();
+}
 
 #[tokio::main]
-async fn main() {
-    let subscriber = tracing_subscriber::fmt()
-        .pretty()
-        .with_file(false)
-        .with_line_number(false)
-        .with_thread_ids(false)
-        .with_target(false)
-        .without_time()
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    init_logging();
 
-    info!("💰 ccTalk device info example.");
+    let socket_path = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "/tmp/cctalk.sock".to_string());
 
+    info!("Hopper Info Example");
+    info!("Socket: {}", socket_path);
+
+    // Setup transport
     let (tx, rx) = mpsc::channel(32);
-
-    // Make sure you have socat running:
     let transport = CcTalkTokioTransport::new(
         rx,
-        "/tmp/cctalk.sock".to_string(),
+        socket_path,
         Duration::from_millis(100),
         Duration::from_millis(100),
         RetryConfig::default(),
         true,
     );
+
     tokio::spawn(async move {
         if let Err(e) = transport.run().await {
-            tracing::error!("☠️ Error running transport: {}", e);
+            error!("Transport error: {}", e);
         }
     });
     tokio::time::sleep(Duration::from_millis(100)).await;
 
+    // Create hopper device (address 3 is common for hoppers)
     let hopper = PayoutDevice::new(Device::new(3, Category::Payout, ChecksumType::Crc8), tx);
 
-    info!("📡 Trying to reach hopper...");
-    match hopper.simple_poll().await {
-        Ok(_) => info!("✅ Hopper is online!"),
-        Err(error) => {
-            error!("☠️ Error reaching hopper: {}", error);
-            return;
-        }
-    }
+    // Check connectivity
+    info!("Connecting to hopper...");
+    hopper.simple_poll().await?;
+    info!("Connected");
 
-    let manufacturer = hopper.get_manufacturer_id().await.unwrap();
-    let serial_number = hopper.get_serial_number().await.unwrap();
-    let category = hopper.get_category().await.unwrap();
-    let product_code = hopper.get_product_code().await.unwrap();
-    let software_revision = hopper.get_software_revision().await.unwrap();
+    // Display device info
+    info!("Device Information:");
+    info!(
+        "  Manufacturer:      {}",
+        hopper.get_manufacturer_id().await?
+    );
+    info!("  Serial Number:     {}", hopper.get_serial_number().await?);
+    info!("  Category:          {:?}", hopper.get_category().await?);
+    info!("  Product Code:      {}", hopper.get_product_code().await?);
+    info!(
+        "  Software Revision: {}",
+        hopper.get_software_revision().await?
+    );
 
-    info!("Manufacturer: {}", manufacturer);
-    info!("Serial Number: {}", serial_number);
-    info!("Category: {:?}", category);
-    info!("Product Code: {}", product_code);
-    info!("Software Revision: {}", software_revision);
+    Ok(())
 }
