@@ -5,7 +5,9 @@ use std::{
     time::Duration,
 };
 
-use cc_talk_core::cc_talk::{BillEvent, BillRouteCode, CoinEvent, CurrencyToken};
+use cc_talk_core::cc_talk::{
+    BillEvent, BillRouteCode, CoinAcceptorError, CoinEvent, CurrencyToken,
+};
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error, info, instrument, trace, warn};
 
@@ -357,22 +359,38 @@ impl CurrencyAcceptorPool {
             match cv.poll().await {
                 Ok(poll_result) => {
                     for event in poll_result.events.iter() {
-                        if let CoinEvent::Credit(credit) = event {
-                            let position = credit.credit;
-                            if let Some(&value) = self.coin_value_maps[idx].get(&position) {
-                                info!(
-                                    device = %device_id,
-                                    position,
-                                    value,
-                                    "coin credit received"
-                                );
-                                result.add_credit(CurrencyCredit::new(value, device_id, position));
-                            } else {
-                                warn!(
-                                    device = %device_id,
-                                    position,
-                                    "coin credit received for unknown position"
-                                );
+                        match event {
+                            CoinEvent::Credit(credit) => {
+                                let position = credit.credit;
+                                if let Some(&value) = self.coin_value_maps[idx].get(&position) {
+                                    info!(
+                                        device = %device_id,
+                                        position,
+                                        value,
+                                        "coin credit received"
+                                    );
+                                    result.add_credit(CurrencyCredit::new(
+                                        value, device_id, position,
+                                    ));
+                                } else {
+                                    warn!(
+                                        device = %device_id,
+                                        position,
+                                        "coin credit received for unknown position"
+                                    );
+                                }
+                            }
+                            CoinEvent::Error(e) => {
+                                if e.is_fraud_related() {
+                                    warn!(device = %device_id, error = %e, "coin fraud attempt detected");
+                                } else if e.is_hardware_issue() {
+                                    error!(device = %device_id, error = %e, "coin validator hardware issue");
+                                } else if *e != CoinAcceptorError::NullEvent {
+                                    warn!(device = %device_id, error = %e, "coin rejected");
+                                }
+                            }
+                            CoinEvent::Reset => {
+                                trace!(device = %device_id, "coin validator reset detected");
                             }
                         }
                     }
