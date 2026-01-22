@@ -288,7 +288,12 @@ impl PayoutPool {
             .map_err(|e| PayoutPoolError::CommandError { address, error: e })?;
 
         let inventory_level = HopperInventoryLevel::from(status);
-        Ok(HopperInventory::new(address, value, inventory_level, status))
+        Ok(HopperInventory::new(
+            address,
+            value,
+            inventory_level,
+            status,
+        ))
     }
 
     /// Calculates the maximum value that can be dispensed with current hoppers.
@@ -362,6 +367,8 @@ impl PayoutPool {
         result
     }
 
+    // TODO: Rework this to have a bg sensor polling and inventory tracking task also a bg payout
+    // task
     /// Internal payout implementation.
     async fn payout_inner(
         &self,
@@ -403,7 +410,9 @@ impl PayoutPool {
             let _ = progress_tx.try_send(progress.clone());
 
             // Dispense coins from this hopper
-            let dispensed = self.dispense_from_hopper(hopper, count, coin_value, &mut progress).await;
+            let dispensed = self
+                .dispense_from_hopper(hopper, count, coin_value, &mut progress)
+                .await;
 
             if dispensed < count {
                 // Hopper ran empty or failed - mark as empty and replan
@@ -418,7 +427,8 @@ impl PayoutPool {
 
                 // Replan with remaining value
                 if progress.remaining > 0 && !available_hoppers.is_empty() {
-                    let (new_plan, _) = self.generate_payout_plan(progress.remaining, &available_hoppers);
+                    let (new_plan, _) =
+                        self.generate_payout_plan(progress.remaining, &available_hoppers);
                     plan = new_plan;
                     info!(
                         remaining = progress.remaining,
@@ -508,7 +518,12 @@ impl PayoutPool {
             }
         }
 
-        debug!(address, dispensed, requested = count, "hopper dispense complete");
+        debug!(
+            address,
+            dispensed,
+            requested = count,
+            "hopper dispense complete"
+        );
         dispensed
     }
 
@@ -575,8 +590,14 @@ mod tests {
     fn create_test_pool() -> PayoutPool {
         let (tx, _rx) = mpsc::channel(1);
 
-        let h1 = PayoutDevice::new(Device::new(3, Category::Payout, ChecksumType::Crc8), tx.clone());
-        let h2 = PayoutDevice::new(Device::new(4, Category::Payout, ChecksumType::Crc8), tx.clone());
+        let h1 = PayoutDevice::new(
+            Device::new(3, Category::Payout, ChecksumType::Crc8),
+            tx.clone(),
+        );
+        let h2 = PayoutDevice::new(
+            Device::new(4, Category::Payout, ChecksumType::Crc8),
+            tx.clone(),
+        );
         let h3 = PayoutDevice::new(Device::new(5, Category::Payout, ChecksumType::Crc8), tx);
 
         PayoutPool::new(
@@ -646,8 +667,14 @@ mod tests {
     fn generate_payout_plan_smallest_first() {
         let (tx, _rx) = mpsc::channel(1);
 
-        let h1 = PayoutDevice::new(Device::new(3, Category::Payout, ChecksumType::Crc8), tx.clone());
-        let h2 = PayoutDevice::new(Device::new(4, Category::Payout, ChecksumType::Crc8), tx.clone());
+        let h1 = PayoutDevice::new(
+            Device::new(3, Category::Payout, ChecksumType::Crc8),
+            tx.clone(),
+        );
+        let h2 = PayoutDevice::new(
+            Device::new(4, Category::Payout, ChecksumType::Crc8),
+            tx.clone(),
+        );
         let h3 = PayoutDevice::new(Device::new(5, Category::Payout, ChecksumType::Crc8), tx);
 
         let pool = PayoutPool::new(
@@ -668,8 +695,8 @@ mod tests {
 
         assert!(pool.can_payout(170)); // 100 + 50 + 20
         assert!(pool.can_payout(100)); // 100
-        assert!(pool.can_payout(20));  // 20
-        assert!(!pool.can_payout(5));  // Can't make 5 with 100, 50, 20
+        assert!(pool.can_payout(20)); // 20
+        assert!(!pool.can_payout(5)); // Can't make 5 with 100, 50, 20
         assert!(!pool.can_payout(15)); // Can't make 15
     }
 }
