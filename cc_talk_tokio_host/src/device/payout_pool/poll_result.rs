@@ -20,25 +20,20 @@ pub enum HopperInventoryLevel {
 
 impl From<HopperStatus> for HopperInventoryLevel {
     fn from(status: HopperStatus) -> Self {
-        match (
-            status.low_level_supported,
-            status.higher_than_low_level,
-            status.high_level_supported,
-            status.higher_than_high_level,
-        ) {
-            // Below low level = empty
-            (true, false, _, _) => Self::Empty,
-            // Both sensors, both above = high
-            (true, true, true, true) => Self::High,
-            // Above low, below high = medium
-            (true, true, true, false) => Self::Medium,
-            // Only low sensor supported, above it = medium
-            (true, true, false, _) => Self::Medium,
-            // No sensor support
-            (false, _, false, _) => Self::Unknown,
-            // Only high sensor (unusual configuration)
-            (false, _, true, true) => Self::High,
-            (false, _, true, false) => Self::Low,
+        if !(status.high_level_supported || status.higher_than_high_level) {
+            return Self::Unknown;
+        }
+
+        if status.high_level_supported && status.higher_than_high_level {
+            Self::High
+        } else if status.low_level_supported {
+            if status.higher_than_low_level {
+                Self::Medium
+            } else {
+                Self::Low
+            }
+        } else {
+            Self::Empty
         }
     }
 }
@@ -71,7 +66,12 @@ pub struct HopperInventory {
 impl HopperInventory {
     /// Creates a new hopper inventory status.
     #[must_use]
-    pub const fn new(address: u8, value: u32, level: HopperInventoryLevel, status: HopperStatus) -> Self {
+    pub const fn new(
+        address: u8,
+        value: u32,
+        level: HopperInventoryLevel,
+        status: HopperStatus,
+    ) -> Self {
         Self {
             address,
             value,
@@ -210,7 +210,10 @@ mod tests {
     fn hopper_inventory_level_from_status() {
         // Both sensors, both above
         let status = HopperStatus::new(true, true, true, true);
-        assert_eq!(HopperInventoryLevel::from(status), HopperInventoryLevel::High);
+        assert_eq!(
+            HopperInventoryLevel::from(status),
+            HopperInventoryLevel::High
+        );
 
         // Both sensors, above low but below high
         let status = HopperStatus::new(true, true, true, false);
@@ -223,7 +226,7 @@ mod tests {
         let status = HopperStatus::new(true, false, true, false);
         assert_eq!(
             HopperInventoryLevel::from(status),
-            HopperInventoryLevel::Empty
+            HopperInventoryLevel::Low
         );
 
         // No sensors
@@ -262,8 +265,18 @@ mod tests {
         let mut result = PayoutPollResult::new();
 
         let status = HopperStatus::new(true, true, true, true);
-        result.add_inventory(HopperInventory::new(3, 100, HopperInventoryLevel::High, status));
-        result.add_inventory(HopperInventory::new(4, 50, HopperInventoryLevel::Low, status));
+        result.add_inventory(HopperInventory::new(
+            3,
+            100,
+            HopperInventoryLevel::High,
+            status,
+        ));
+        result.add_inventory(HopperInventory::new(
+            4,
+            50,
+            HopperInventoryLevel::Low,
+            status,
+        ));
 
         assert_eq!(result.get_by_address(3).map(|i| i.value), Some(100));
         assert_eq!(result.get_by_address(4).map(|i| i.value), Some(50));
