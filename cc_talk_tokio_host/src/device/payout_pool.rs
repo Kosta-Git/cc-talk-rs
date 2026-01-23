@@ -34,6 +34,7 @@ mod config;
 mod error;
 mod poll_result;
 mod pool;
+mod pool_sensor;
 
 pub use builder::PayoutPoolBuilder;
 pub use config::HopperSelectionStrategy;
