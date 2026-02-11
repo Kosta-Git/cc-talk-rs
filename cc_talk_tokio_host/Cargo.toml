@@ -29,10 +29,11 @@ name = "currency_acceptor_pool"
 cc_talk_core = { path = "../cc_talk_core", features = ["std"] }
 cc_talk_host = { path = "../cc_talk_host", features = ["tracing", "std"] }
 
-tokio = { version = "1.48.0", features = ["full"] }
+tokio = { version = "1.49.0", features = ["full"] }
 tracing = { version = "0.1.41" }
-thiserror = "2.0.17"
+thiserror = "2.0.18"
+derive_builder = "0.20.2"
 
 [dev-dependencies]
-tempfile = "3.20.0"
-tracing-subscriber = { version = "0.3.20" }
+tempfile = "3.25.0"
+tracing-subscriber = { version = "0.3.22" }

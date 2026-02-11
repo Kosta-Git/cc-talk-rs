@@ -16,6 +16,14 @@ pub struct PayoutDevice {
     pub sender: mpsc::Sender<TransportMessage>,
 }
 
+impl std::fmt::Debug for PayoutDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PayoutDevice")
+            .field("device", &self.device)
+            .finish_non_exhaustive()
+    }
+}
+
 impl PayoutDevice {
     pub fn new(device: Device, sender: mpsc::Sender<TransportMessage>) -> Self {
         debug!(
@@ -215,6 +223,15 @@ impl PayoutDevice {
             .map_err(CommandError::from)?;
         info!(permanent, speed, "motor speed adjusted");
         Ok(())
+    }
+}
+
+impl Clone for PayoutDevice {
+    fn clone(&self) -> Self {
+        Self {
+            device: self.device.clone(),
+            sender: self.sender.clone(),
+        }
     }
 }
 
