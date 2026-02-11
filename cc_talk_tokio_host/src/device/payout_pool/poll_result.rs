@@ -3,6 +3,9 @@ use cc_talk_core::cc_talk::HopperStatus;
 use crate::device::base::CommandError;
 
 /// Inventory level of a hopper based on sensor readings.
+///
+/// Levels are ordered: `Empty < Low < Medium < High < Unknown`.
+/// `Unknown` is treated as highest because we cannot confirm it is empty.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum HopperInventoryLevel {
     /// Hopper is empty or below low level threshold.
@@ -18,12 +21,38 @@ pub enum HopperInventoryLevel {
     Unknown,
 }
 
+impl HopperInventoryLevel {
+    /// Returns a numeric rank used for ordering.
+    const fn rank(self) -> u8 {
+        match self {
+            Self::Empty => 0,
+            Self::Low => 1,
+            Self::Medium => 2,
+            Self::High => 3,
+            Self::Unknown => 4,
+        }
+    }
+}
+
+impl PartialOrd for HopperInventoryLevel {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for HopperInventoryLevel {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.rank().cmp(&other.rank())
+    }
+}
+
 impl From<HopperStatus> for HopperInventoryLevel {
     fn from(status: HopperStatus) -> Self {
         if !(status.high_level_supported || status.higher_than_high_level) {
             return Self::Unknown;
         }
 
+        // TODO:
         if status.high_level_supported && status.higher_than_high_level {
             Self::High
         } else if status.low_level_supported {
