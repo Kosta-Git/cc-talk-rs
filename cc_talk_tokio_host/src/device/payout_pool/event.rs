@@ -1,13 +1,16 @@
-use std::collections::HashMap;
-
 use crate::device::base::CommandError;
 
-/// Events emitted by the [`super::PayoutPool`] during operations.
+use super::poll_result::DispenseProgress;
+
+/// Events emitted during a payout operation.
 ///
-/// Subscribe to these events by receiving from the event channel
-/// returned by the pool builder.
+/// Subscribe to these events by passing an `mpsc::Sender<PayoutEvent>` to
+/// [`super::PayoutPool::payout_with_events`].
 #[derive(Debug, Clone)]
-pub enum PayoutPoolEvent {
+pub enum PayoutEvent {
+    /// Intermediate progress update during an active payout operation.
+    Progress(DispenseProgress),
+
     /// A hopper was detected as empty during a payout operation.
     HopperEmpty {
         /// The ccTalk address of the empty hopper.
@@ -16,59 +19,21 @@ pub enum PayoutPoolEvent {
         coin_value: u32,
     },
 
-    /// Progress update during an active payout operation.
-    PayoutProgress {
-        /// Total value requested for this payout.
-        requested: u32,
-        /// Total value dispensed so far.
-        dispensed: u32,
-        /// Value remaining to dispense.
-        remaining: u32,
-        /// The hopper currently dispensing (by address), if any.
-        active_hopper: Option<u8>,
-        /// Number of coins dispensed so far.
-        coins_dispensed: u32,
-    },
-
     /// The payout plan was rebalanced because a hopper ran empty or failed.
-    PayoutPlanRebalanced {
+    PlanRebalanced {
         /// The address of the hopper that triggered the rebalance.
         exhausted_hopper: u8,
         /// The remaining value being replanned.
         remaining_value: u32,
-        /// The new plan: hopper address -> coin count.
-        new_plan: HashMap<u8, u8>,
+        /// The new plan: `(hopper_address, coin_count)` pairs in dispensing order.
+        new_plan: Vec<(u8, u8)>,
     },
 
-    /// A payout operation completed.
-    PayoutCompleted {
-        /// Value that was requested.
-        requested: u32,
-        /// Value actually dispensed.
-        dispensed: u32,
-        /// Number of coins dispensed.
-        coins_count: u32,
-        /// Whether the full requested amount was dispensed.
-        fully_dispensed: bool,
-    },
-
-    /// A hopper encountered a communication error.
+    /// A hopper encountered a communication error during payout.
     HopperError {
         /// The ccTalk address of the hopper.
         address: u8,
         /// The error that occurred.
         error: CommandError,
-    },
-
-    /// A hopper was enabled in the pool.
-    HopperEnabled {
-        /// The ccTalk address of the hopper.
-        address: u8,
-    },
-
-    /// A hopper was disabled in the pool.
-    HopperDisabled {
-        /// The ccTalk address of the hopper.
-        address: u8,
     },
 }
