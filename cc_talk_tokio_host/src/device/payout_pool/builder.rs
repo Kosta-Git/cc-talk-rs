@@ -73,8 +73,7 @@ impl PayoutPoolBuilder {
         PayoutPool::new(
             self.hoppers.unwrap_or_default(),
             self.selection_strategy.unwrap_or_default(),
-            self.polling_interval
-                .unwrap_or(Duration::from_millis(250)),
+            self.polling_interval.unwrap_or(Duration::from_millis(250)),
             self.initially_disabled.unwrap_or_default(),
         )
     }
