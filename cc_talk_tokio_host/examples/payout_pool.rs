@@ -21,7 +21,7 @@ use cc_talk_core::cc_talk::{Category, ChecksumType, Device};
 use cc_talk_tokio_host::{
     device::{
         payout::PayoutDevice,
-        payout_pool::{DispenseProgress, HopperSelectionStrategy, PayoutPool},
+        payout_pool::{HopperSelectionStrategy, PayoutEvent, PayoutPool},
     },
     transport::{retry::RetryConfig, tokio_transport::CcTalkTokioTransport},
 };
@@ -65,7 +65,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Payout Pool Example");
     info!("Socket: {}", socket_path);
-    info!("Value to dispense: {} cents ({:.2} EUR)", value, value as f64 / 100.0);
+    info!(
+        "Value to dispense: {} cents ({:.2} EUR)",
+        value,
+        value as f64 / 100.0
+    );
 
     // Setup transport
     let (tx, rx) = mpsc::channel(32);
@@ -101,12 +105,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Build the payout pool
     info!("Building payout pool...");
-    let mut pool = PayoutPool::builder()
+    let pool = PayoutPool::builder()
         .add_hopper(hopper1, 100) // 1.00 EUR
-        .add_hopper(hopper2, 50)  // 0.50 EUR
-        .add_hopper(hopper3, 20)  // 0.20 EUR
-        .with_selection_strategy(HopperSelectionStrategy::LargestFirst)
-        .with_polling_interval(Duration::from_millis(250))
+        .add_hopper(hopper2, 50) // 0.50 EUR
+        .add_hopper(hopper3, 20) // 0.20 EUR
+        .selection_strategy(HopperSelectionStrategy::LargestFirst)
+        .polling_interval(Duration::from_millis(250))
         .build();
 
     // Initialize the pool
@@ -121,7 +125,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if we can dispense the requested amount
     if !pool.can_payout(value) {
-        warn!("Cannot dispense exact amount {} - some remainder may be left", value);
+        warn!(
+            "Cannot dispense exact amount {} - some remainder may be left",
+            value
+        );
     }
 
     // Poll hopper inventories
@@ -137,33 +144,55 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         warn!("  Hopper {} error: {}", err.address, err.error);
     }
 
-    // Enable hoppers
-    info!("Enabling hoppers...");
-    pool.enable_all().await?;
+    // Create event channel for this payout
+    let (event_tx, mut event_rx) = mpsc::channel::<PayoutEvent>(16);
 
-    // Create progress channel
-    let (progress_tx, mut progress_rx) = mpsc::channel::<DispenseProgress>(16);
-
-    // Spawn progress monitor
-    let progress_handle = tokio::spawn(async move {
-        while let Some(progress) = progress_rx.recv().await {
-            if !progress.done {
-                info!(
-                    "Progress: dispensed {} of {} cents ({} coins)",
-                    progress.dispensed,
-                    progress.requested,
-                    progress.coins_count()
-                );
+    // Spawn event monitor
+    let event_handle = tokio::spawn(async move {
+        while let Some(event) = event_rx.recv().await {
+            match event {
+                PayoutEvent::Progress(progress) => {
+                    if !progress.done {
+                        info!(
+                            "Progress: dispensed {} of {} cents ({} coins)",
+                            progress.dispensed,
+                            progress.requested,
+                            progress.coins_count()
+                        );
+                    }
+                }
+                PayoutEvent::HopperEmpty {
+                    address,
+                    coin_value,
+                } => {
+                    warn!(
+                        "Hopper {} ({} cents) is empty!",
+                        address, coin_value
+                    );
+                }
+                PayoutEvent::PlanRebalanced {
+                    exhausted_hopper,
+                    remaining_value,
+                    ..
+                } => {
+                    info!(
+                        "Rebalanced after hopper {} emptied, {} cents remaining",
+                        exhausted_hopper, remaining_value
+                    );
+                }
+                PayoutEvent::HopperError { address, error } => {
+                    error!("Hopper {} error: {}", address, error);
+                }
             }
         }
     });
 
-    // Execute payout
+    // Execute payout with events
     info!("Dispensing {} cents...", value);
-    let result = pool.payout_with_progress(value, progress_tx).await;
+    let result = pool.payout_with_events(value, event_tx).await;
 
-    // Wait for progress monitor to finish
-    let _ = progress_handle.await;
+    // Wait for event monitor to finish
+    let _ = event_handle.await;
 
     match result {
         Ok(progress) => {
@@ -171,7 +200,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             info!("  Requested: {} cents", progress.requested);
             info!("  Dispensed: {} cents", progress.dispensed);
             info!("  Remaining: {} cents", progress.remaining);
-            info!("  Coins: {} ({:?})", progress.coins_count(), progress.coins_dispensed);
+            info!(
+                "  Coins: {} ({:?})",
+                progress.coins_count(),
+                progress.coins_dispensed
+            );
             if !progress.empty_hoppers.is_empty() {
                 warn!("  Empty hoppers: {:?}", progress.empty_hoppers);
             }
@@ -180,10 +213,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             error!("Payout failed: {}", e);
         }
     }
-
-    // Disable hoppers
-    info!("Disabling hoppers...");
-    pool.disable_all().await?;
 
     info!("Done");
     Ok(())

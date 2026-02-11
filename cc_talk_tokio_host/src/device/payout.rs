@@ -226,6 +226,15 @@ impl PayoutDevice {
     }
 }
 
+impl Clone for PayoutDevice {
+    fn clone(&self) -> Self {
+        Self {
+            device: self.device.clone(),
+            sender: self.sender.clone(),
+        }
+    }
+}
+
 impl DeviceCommon for PayoutDevice {
     fn get_device(&self) -> &Device {
         &self.device

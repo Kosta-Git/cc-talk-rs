@@ -1,8 +1,9 @@
-#![allow(dead_code)]
-
 use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
+    collections::{HashMap, HashSet},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -15,6 +16,7 @@ use super::{
     PayoutPoolError, PayoutPoolResult,
     builder::PayoutPoolBuilder,
     config::HopperSelectionStrategy,
+    event::PayoutEvent,
     poll_result::{
         DispenseProgress, HopperInventory, HopperInventoryLevel, HopperPollError, PayoutPollResult,
     },
@@ -28,10 +30,17 @@ const MAX_FAILURES: u8 = 5;
 /// `PayoutPool` manages multiple payout devices (hoppers) as a single unit,
 /// providing coordinated control over:
 ///
-/// - Hopper enable/disable states
+/// - Pool-level hopper enable/disable (no hardware commands)
 /// - Inventory level monitoring via sensors
 /// - Value-based payout operations with automatic hopper selection
+/// - Per-payment async event notifications
+/// - Automatic payout plan rebalancing when hoppers run empty
 /// - Emergency stop coordination
+///
+/// # Cloning
+///
+/// `PayoutPool` implements [`Clone`] and shares its internal state
+/// (including disabled hopper set and dispensing lock) across clones.
 ///
 /// # Example
 ///
@@ -40,30 +49,33 @@ const MAX_FAILURES: u8 = 5;
 ///     .add_hopper(hopper1, 100)  // 1.00 EUR
 ///     .add_hopper(hopper2, 50)   // 0.50 EUR
 ///     .add_hopper(hopper3, 20)   // 0.20 EUR
-///     .with_selection_strategy(HopperSelectionStrategy::LargestFirst)
-///     .build_and_initialize()
-///     .await?;
+///     .selection_strategy(HopperSelectionStrategy::LargestFirst)
+///     .build();
+///
+/// pool.initialize().await?;
 ///
 /// // Dispense 1.70 EUR = 1x100 + 1x50 + 1x20
 /// let result = pool.payout(170).await?;
 /// println!("Dispensed {} cents in {} coins", result.dispensed, result.coins_count());
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PayoutPool {
     hoppers: Vec<PayoutDevice>,
-    /// Maps hopper address -> coin value
+    /// Maps hopper address -> coin value.
     hopper_values: HashMap<u8, u32>,
+    /// Set of hopper addresses that are disabled at the pool level.
+    disabled_hoppers: Arc<Mutex<HashSet<u8>>>,
     selection_strategy: HopperSelectionStrategy,
     polling_interval: Duration,
-    initialized: Arc<Mutex<bool>>,
-    is_dispensing: Arc<Mutex<bool>>,
+    initialized: Arc<AtomicBool>,
+    is_dispensing: Arc<AtomicBool>,
 }
 
 impl PayoutPool {
     /// Creates a new builder for constructing a `PayoutPool`.
     #[must_use]
     pub fn builder() -> PayoutPoolBuilder {
-        PayoutPoolBuilder::new()
+        PayoutPoolBuilder::default()
     }
 
     /// Creates a new pool with the given configuration.
@@ -73,6 +85,7 @@ impl PayoutPool {
         hoppers: Vec<(PayoutDevice, u32)>,
         selection_strategy: HopperSelectionStrategy,
         polling_interval: Duration,
+        initially_disabled: HashSet<u8>,
     ) -> Self {
         let mut hopper_values = HashMap::new();
         let mut hopper_devices = Vec::with_capacity(hoppers.len());
@@ -87,16 +100,18 @@ impl PayoutPool {
             hopper_count = hopper_devices.len(),
             selection_strategy = ?selection_strategy,
             polling_interval_ms = polling_interval.as_millis() as u64,
+            initially_disabled = ?initially_disabled,
             "creating payout pool"
         );
 
         Self {
             hoppers: hopper_devices,
             hopper_values,
+            disabled_hoppers: Arc::new(Mutex::new(initially_disabled)),
             selection_strategy,
             polling_interval,
-            initialized: Arc::new(Mutex::new(false)),
-            is_dispensing: Arc::new(Mutex::new(false)),
+            initialized: Arc::new(AtomicBool::new(false)),
+            is_dispensing: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -109,7 +124,7 @@ impl PayoutPool {
     /// Returns `true` if the pool has been initialized.
     #[must_use]
     pub fn is_initialized(&self) -> bool {
-        *self.initialized.lock().expect("should not be poisoned")
+        self.initialized.load(Ordering::Acquire)
     }
 
     /// Returns the configured selection strategy.
@@ -142,9 +157,85 @@ impl PayoutPool {
         self.hopper_values.get(&address).copied()
     }
 
-    /// Initializes the pool by verifying all hoppers are responsive.
+    // --- Pool-level enable/disable ---
+
+    /// Disables a hopper at the pool level.
     ///
-    /// This method polls each hopper to ensure it's connected and working.
+    /// A disabled hopper will not be used for payout operations.
+    /// This does not send any hardware commands to the device.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PayoutPoolError::HopperNotFound`] if the address is not in the pool.
+    #[instrument(skip(self), fields(address))]
+    pub fn disable_hopper(&self, address: u8) -> PayoutPoolResult<()> {
+        self.get_hopper(address)?;
+        let mut disabled = self.disabled_hoppers.lock().expect("should not be poisoned");
+        disabled.insert(address);
+        info!(address, "hopper disabled");
+        Ok(())
+    }
+
+    /// Enables a hopper at the pool level.
+    ///
+    /// Re-includes a previously disabled hopper in payout operations.
+    /// This does not send any hardware commands to the device.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PayoutPoolError::HopperNotFound`] if the address is not in the pool.
+    #[instrument(skip(self), fields(address))]
+    pub fn enable_hopper(&self, address: u8) -> PayoutPoolResult<()> {
+        self.get_hopper(address)?;
+        let mut disabled = self.disabled_hoppers.lock().expect("should not be poisoned");
+        disabled.remove(&address);
+        info!(address, "hopper enabled");
+        Ok(())
+    }
+
+    /// Returns `true` if the hopper is disabled at the pool level.
+    #[must_use]
+    pub fn is_hopper_disabled(&self, address: u8) -> bool {
+        self.disabled_hoppers
+            .lock()
+            .expect("should not be poisoned")
+            .contains(&address)
+    }
+
+    /// Returns the set of currently disabled hopper addresses.
+    #[must_use]
+    pub fn disabled_hoppers(&self) -> HashSet<u8> {
+        self.disabled_hoppers
+            .lock()
+            .expect("should not be poisoned")
+            .clone()
+    }
+
+    /// Returns the available hoppers filtered to exclude disabled and extra exclusions.
+    ///
+    /// Returns `(address, coin_value)` pairs sorted by the selection strategy.
+    fn available_hopper_values(&self, extra_exclusions: &HashSet<u8>) -> Vec<(u8, u32)> {
+        let disabled = self.disabled_hoppers.lock().expect("should not be poisoned");
+        let mut hoppers: Vec<(u8, u32)> = self
+            .hopper_values
+            .iter()
+            .filter(|(addr, _)| !disabled.contains(addr) && !extra_exclusions.contains(addr))
+            .map(|(&addr, &val)| (addr, val))
+            .collect();
+
+        match self.selection_strategy {
+            HopperSelectionStrategy::LargestFirst | HopperSelectionStrategy::BalanceInventory => {
+                hoppers.sort_by(|a, b| b.1.cmp(&a.1));
+            }
+            HopperSelectionStrategy::SmallestFirst => {
+                hoppers.sort_by(|a, b| a.1.cmp(&b.1));
+            }
+        }
+
+        hoppers
+    }
+
+    /// Initializes the pool by verifying all hoppers are responsive.
     ///
     /// # Errors
     ///
@@ -152,7 +243,7 @@ impl PayoutPool {
     /// - The pool has no hoppers
     /// - All hoppers fail to respond
     #[instrument(skip(self), fields(hopper_count = self.hoppers.len()))]
-    pub async fn initialize(&mut self) -> PayoutPoolResult<()> {
+    pub async fn initialize(&self) -> PayoutPoolResult<()> {
         if self.hoppers.is_empty() {
             error!("pool initialization failed: no hoppers configured");
             return Err(PayoutPoolError::NoHoppers);
@@ -185,7 +276,7 @@ impl PayoutPool {
             return Err(PayoutPoolError::AllHoppersFailed);
         }
 
-        *self.initialized.lock().expect("should not be poisoned") = true;
+        self.initialized.store(true, Ordering::Release);
         info!(
             successful,
             total = self.hoppers.len(),
@@ -194,59 +285,10 @@ impl PayoutPool {
         Ok(())
     }
 
-    /// Enables all hoppers in the pool.
-    #[instrument(skip(self))]
-    pub async fn enable_all(&self) -> PayoutPoolResult<()> {
-        debug!("enabling all hoppers");
-        for hopper in &self.hoppers {
-            let address = hopper.device.address();
-            if let Err(e) = hopper.enable_hopper().await {
-                warn!(address, error = %e, "failed to enable hopper");
-            }
-        }
-        info!("all hoppers enabled");
-        Ok(())
-    }
-
-    /// Disables all hoppers in the pool.
-    #[instrument(skip(self))]
-    pub async fn disable_all(&self) -> PayoutPoolResult<()> {
-        debug!("disabling all hoppers");
-        for hopper in &self.hoppers {
-            let address = hopper.device.address();
-            if let Err(e) = hopper.disable_hopper().await {
-                warn!(address, error = %e, "failed to disable hopper");
-            }
-        }
-        info!("all hoppers disabled");
-        Ok(())
-    }
-
-    /// Enables a specific hopper by address.
-    #[instrument(skip(self), fields(address))]
-    pub async fn enable_hopper(&self, address: u8) -> PayoutPoolResult<()> {
-        let hopper = self.get_hopper(address)?;
-        hopper
-            .enable_hopper()
-            .await
-            .map_err(|e| PayoutPoolError::CommandError { address, error: e })?;
-        info!(address, "hopper enabled");
-        Ok(())
-    }
-
-    /// Disables a specific hopper by address.
-    #[instrument(skip(self), fields(address))]
-    pub async fn disable_hopper(&self, address: u8) -> PayoutPoolResult<()> {
-        let hopper = self.get_hopper(address)?;
-        hopper
-            .disable_hopper()
-            .await
-            .map_err(|e| PayoutPoolError::CommandError { address, error: e })?;
-        info!(address, "hopper disabled");
-        Ok(())
-    }
-
     /// Polls all hoppers for their inventory status.
+    ///
+    /// Polls all hoppers including disabled ones, since physical
+    /// monitoring is still useful regardless of pool-level state.
     #[instrument(skip(self))]
     pub async fn poll_inventories(&self) -> PayoutPollResult {
         let mut result = PayoutPollResult::new();
@@ -296,14 +338,14 @@ impl PayoutPool {
         ))
     }
 
-    /// Calculates the maximum value that can be dispensed with current hoppers.
+    /// Calculates whether the requested value can be dispensed with enabled hoppers.
     ///
-    /// Note: This is a theoretical maximum assuming unlimited coins in each hopper.
+    /// Note: This is a theoretical check assuming unlimited coins in each hopper.
     /// Actual availability depends on hopper inventory.
     #[must_use]
     pub fn can_payout(&self, value: u32) -> bool {
-        // Check if we can make exact change with available denominations
-        self.generate_payout_plan(value, &self.hopper_values).1 == 0
+        let available = self.available_hopper_values(&HashSet::new());
+        self.generate_payout_plan(value, &available).1 == 0
     }
 
     /// Executes an emergency stop on all hoppers.
@@ -322,8 +364,10 @@ impl PayoutPool {
 
     /// Dispenses the specified value from the pool.
     ///
-    /// Uses the configured selection strategy to choose hoppers and
-    /// automatically replans if a hopper runs empty.
+    /// Uses the configured selection strategy to choose hoppers, respects
+    /// disabled hoppers, and automatically replans if a hopper runs empty.
+    /// Hoppers are dispensed sequentially (never in parallel) to avoid
+    /// voltage issues on the ccTalk bus.
     ///
     /// # Arguments
     ///
@@ -334,53 +378,66 @@ impl PayoutPool {
     /// Returns the final dispense progress showing what was actually dispensed.
     #[instrument(skip(self), fields(value))]
     pub async fn payout(&self, value: u32) -> PayoutPoolResult<DispenseProgress> {
-        let (progress_tx, _progress_rx) = mpsc::channel(16);
-        self.payout_with_progress(value, progress_tx).await
+        self.payout_guarded(value, None).await
     }
 
-    /// Dispenses the specified value with progress updates.
+    /// Dispenses the specified value with event notifications.
+    ///
+    /// Events are sent through the provided channel during the operation.
+    /// The caller creates and owns the channel, controlling buffer size.
     ///
     /// # Arguments
     ///
     /// * `value` - The total value to dispense
-    /// * `progress_tx` - Channel to receive progress updates
-    #[instrument(skip(self, progress_tx), fields(value))]
-    pub async fn payout_with_progress(
+    /// * `event_tx` - Channel to receive payout events
+    #[instrument(skip(self, event_tx), fields(value))]
+    pub async fn payout_with_events(
         &self,
         value: u32,
-        progress_tx: mpsc::Sender<DispenseProgress>,
+        event_tx: mpsc::Sender<PayoutEvent>,
     ) -> PayoutPoolResult<DispenseProgress> {
-        // Check if already dispensing
+        self.payout_guarded(value, Some(event_tx)).await
+    }
+
+    /// Guards payout with the dispensing lock.
+    async fn payout_guarded(
+        &self,
+        value: u32,
+        event_tx: Option<mpsc::Sender<PayoutEvent>>,
+    ) -> PayoutPoolResult<DispenseProgress> {
+        if self
+            .is_dispensing
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
         {
-            let mut is_dispensing = self.is_dispensing.lock().expect("should not be poisoned");
-            if *is_dispensing {
-                return Err(PayoutPoolError::PayoutInProgress);
-            }
-            *is_dispensing = true;
+            return Err(PayoutPoolError::PayoutInProgress);
         }
 
-        let result = self.payout_inner(value, progress_tx).await;
+        let result = self.payout_inner(value, &event_tx).await;
 
-        // Clear dispensing flag
-        *self.is_dispensing.lock().expect("should not be poisoned") = false;
+        self.is_dispensing.store(false, Ordering::Release);
 
         result
     }
 
-    // TODO: Rework this to have a bg sensor polling and inventory tracking task also a bg payout
-    // task
     /// Internal payout implementation.
+    ///
+    /// Hoppers are dispensed sequentially to avoid voltage issues on the
+    /// ccTalk bus.
     async fn payout_inner(
         &self,
         value: u32,
-        progress_tx: mpsc::Sender<DispenseProgress>,
+        event_tx: &Option<mpsc::Sender<PayoutEvent>>,
     ) -> PayoutPoolResult<DispenseProgress> {
         info!(value, "starting payout");
 
         let mut progress = DispenseProgress::new(value);
-        let mut available_hoppers = self.hopper_values.clone();
+        let mut exhausted_hoppers = HashSet::new();
 
-        // Generate initial plan
+        // Build available hoppers (respecting disabled)
+        let available_hoppers = self.available_hopper_values(&exhausted_hoppers);
+
+        // Generate initial plan (Vec preserves strategy order)
         let (mut plan, remainder) = self.generate_payout_plan(value, &available_hoppers);
 
         if remainder > 0 {
@@ -390,11 +447,9 @@ impl PayoutPool {
             );
         }
 
-        // Execute the plan
-        while !plan.is_empty() {
-            // Get the next hopper to dispense from (based on strategy, we process largest first)
-            let (&address, &count) = plan.iter().next().expect("plan is not empty");
-            plan.remove(&address);
+        // Execute the plan — hoppers are processed in strategy order
+        while let Some((address, count)) = plan.first().copied() {
+            plan.remove(0);
 
             let Some(hopper) = self.hoppers.iter().find(|h| h.device.address() == address) else {
                 warn!(address, "hopper not found in pool");
@@ -406,16 +461,16 @@ impl PayoutPool {
 
             info!(address, count, coin_value, "dispensing from hopper");
 
-            // Send progress update
-            let _ = progress_tx.try_send(progress.clone());
+            // Emit progress event
+            emit_event(event_tx, PayoutEvent::Progress(progress.clone()));
 
             // Dispense coins from this hopper
             let dispensed = self
-                .dispense_from_hopper(hopper, count, coin_value, &mut progress)
+                .dispense_from_hopper(hopper, count, coin_value, &mut progress, event_tx)
                 .await;
 
             if dispensed < count {
-                // Hopper ran empty or failed - mark as empty and replan
+                // Hopper ran empty or failed — mark as exhausted and replan
                 warn!(
                     address,
                     requested = count,
@@ -423,27 +478,48 @@ impl PayoutPool {
                     "hopper ran empty or failed"
                 );
                 progress.empty_hoppers.push(address);
-                available_hoppers.remove(&address);
+                exhausted_hoppers.insert(address);
 
-                // Replan with remaining value
-                if progress.remaining > 0 && !available_hoppers.is_empty() {
-                    let (new_plan, _) =
-                        self.generate_payout_plan(progress.remaining, &available_hoppers);
-                    plan = new_plan;
-                    info!(
-                        remaining = progress.remaining,
-                        hoppers_available = available_hoppers.len(),
-                        "replanning payout"
-                    );
+                // Emit hopper empty event
+                emit_event(
+                    event_tx,
+                    PayoutEvent::HopperEmpty {
+                        address,
+                        coin_value,
+                    },
+                );
+
+                // Replan with remaining value, excluding exhausted AND disabled
+                if progress.remaining > 0 {
+                    let available = self.available_hopper_values(&exhausted_hoppers);
+                    if !available.is_empty() {
+                        let (new_plan, _) =
+                            self.generate_payout_plan(progress.remaining, &available);
+
+                        emit_event(
+                            event_tx,
+                            PayoutEvent::PlanRebalanced {
+                                exhausted_hopper: address,
+                                remaining_value: progress.remaining,
+                                new_plan: new_plan.clone(),
+                            },
+                        );
+
+                        plan = new_plan;
+                        info!(
+                            remaining = progress.remaining,
+                            hoppers_available = available.len(),
+                            "replanning payout"
+                        );
+                    }
                 }
             }
 
-            // Send progress update
-            let _ = progress_tx.try_send(progress.clone());
+            // Emit progress event
+            emit_event(event_tx, PayoutEvent::Progress(progress.clone()));
         }
 
         progress.mark_done();
-        let _ = progress_tx.try_send(progress.clone());
 
         info!(
             requested = value,
@@ -462,6 +538,7 @@ impl PayoutPool {
         count: u8,
         coin_value: u32,
         progress: &mut DispenseProgress,
+        event_tx: &Option<mpsc::Sender<PayoutEvent>>,
     ) -> u8 {
         let address = hopper.device.address();
         let mut dispensed: u8 = 0;
@@ -470,6 +547,13 @@ impl PayoutPool {
         // Initiate the dispense
         if let Err(e) = hopper.payout_serial_number(count).await {
             error!(address, count, error = %e, "failed to initiate dispense");
+            emit_event(
+                event_tx,
+                PayoutEvent::HopperError {
+                    address,
+                    error: e,
+                },
+            );
             return 0;
         }
 
@@ -512,6 +596,13 @@ impl PayoutPool {
 
                     if failures >= MAX_FAILURES {
                         error!(address, "max failures reached, stopping dispense");
+                        emit_event(
+                            event_tx,
+                            PayoutEvent::HopperError {
+                                address,
+                                error: e,
+                            },
+                        );
                         let _ = hopper.emergency_stop().await;
                     }
                 }
@@ -529,33 +620,18 @@ impl PayoutPool {
 
     /// Generates a payout plan using the greedy algorithm.
     ///
-    /// Returns (plan, remainder) where plan maps hopper address to coin count,
-    /// and remainder is the value that couldn't be dispensed.
+    /// Returns `(plan, remainder)` where plan is a list of `(hopper_address, coin_count)`
+    /// pairs in strategy order, and remainder is the value that couldn't be dispensed.
     fn generate_payout_plan(
         &self,
         value: u32,
-        available_hoppers: &HashMap<u8, u32>,
-    ) -> (HashMap<u8, u8>, u32) {
-        let mut plan = HashMap::new();
+        available_hoppers: &[(u8, u32)],
+    ) -> (Vec<(u8, u8)>, u32) {
+        let mut plan = Vec::new();
         let mut remaining = value;
 
-        // Sort hoppers by value based on strategy
-        let mut sorted_hoppers: Vec<_> = available_hoppers.iter().collect();
-        match self.selection_strategy {
-            HopperSelectionStrategy::LargestFirst => {
-                sorted_hoppers.sort_by(|a, b| b.1.cmp(a.1));
-            }
-            HopperSelectionStrategy::SmallestFirst => {
-                sorted_hoppers.sort_by(|a, b| a.1.cmp(b.1));
-            }
-            HopperSelectionStrategy::BalanceInventory => {
-                // For balance inventory, we'd need actual inventory data
-                // For now, fall back to largest first
-                sorted_hoppers.sort_by(|a, b| b.1.cmp(a.1));
-            }
-        }
-
-        for (&address, &coin_value) in sorted_hoppers {
+        // available_hoppers is already sorted by selection strategy
+        for &(address, coin_value) in available_hoppers {
             if coin_value == 0 || remaining == 0 {
                 continue;
             }
@@ -564,7 +640,7 @@ impl PayoutPool {
             if quantity > 0 {
                 // Cap at u8::MAX per dispense command
                 let capped_quantity = quantity.min(u8::MAX as u32) as u8;
-                plan.insert(address, capped_quantity);
+                plan.push((address, capped_quantity));
                 remaining -= u32::from(capped_quantity) * coin_value;
             }
         }
@@ -578,6 +654,13 @@ impl PayoutPool {
             .iter()
             .find(|h| h.device.address() == address)
             .ok_or(PayoutPoolError::HopperNotFound(address))
+    }
+}
+
+/// Conditionally emits an event if a sender is available.
+fn emit_event(event_tx: &Option<mpsc::Sender<PayoutEvent>>, event: PayoutEvent) {
+    if let Some(tx) = event_tx {
+        let _ = tx.try_send(event);
     }
 }
 
@@ -604,6 +687,7 @@ mod tests {
             vec![(h1, 100), (h2, 50), (h3, 20)],
             HopperSelectionStrategy::LargestFirst,
             Duration::from_millis(250),
+            HashSet::new(),
         )
     }
 
@@ -641,26 +725,40 @@ mod tests {
     #[test]
     fn generate_payout_plan_largest_first() {
         let pool = create_test_pool();
+        let available = pool.available_hopper_values(&HashSet::new());
 
         // 170 = 1x100 + 1x50 + 1x20
-        let (plan, remainder) = pool.generate_payout_plan(170, &pool.hopper_values);
+        let (plan, remainder) = pool.generate_payout_plan(170, &available);
         assert_eq!(remainder, 0);
-        assert_eq!(plan.get(&3), Some(&1)); // 100
-        assert_eq!(plan.get(&4), Some(&1)); // 50
-        assert_eq!(plan.get(&5), Some(&1)); // 20
+        assert!(plan.contains(&(3, 1))); // 100
+        assert!(plan.contains(&(4, 1))); // 50
+        assert!(plan.contains(&(5, 1))); // 20
 
         // 250 = 2x100 + 1x50
-        let (plan, remainder) = pool.generate_payout_plan(250, &pool.hopper_values);
+        let (plan, remainder) = pool.generate_payout_plan(250, &available);
         assert_eq!(remainder, 0);
-        assert_eq!(plan.get(&3), Some(&2)); // 100
-        assert_eq!(plan.get(&4), Some(&1)); // 50
+        assert!(plan.contains(&(3, 2))); // 100
+        assert!(plan.contains(&(4, 1))); // 50
 
         // 175 = 1x100 + 1x50 + 1x20 + 5 remainder
-        let (plan, remainder) = pool.generate_payout_plan(175, &pool.hopper_values);
+        let (plan, remainder) = pool.generate_payout_plan(175, &available);
         assert_eq!(remainder, 5);
-        assert_eq!(plan.get(&3), Some(&1)); // 100
-        assert_eq!(plan.get(&4), Some(&1)); // 50
-        assert_eq!(plan.get(&5), Some(&1)); // 20
+        assert!(plan.contains(&(3, 1))); // 100
+        assert!(plan.contains(&(4, 1))); // 50
+        assert!(plan.contains(&(5, 1))); // 20
+    }
+
+    #[test]
+    fn generate_payout_plan_preserves_strategy_order() {
+        let pool = create_test_pool();
+        let available = pool.available_hopper_values(&HashSet::new());
+
+        // With LargestFirst, the plan should be ordered: 100, 50, 20
+        let (plan, _) = pool.generate_payout_plan(170, &available);
+        assert_eq!(plan.len(), 3);
+        assert_eq!(plan[0].0, 3); // 100-cent hopper first
+        assert_eq!(plan[1].0, 4); // 50-cent hopper second
+        assert_eq!(plan[2].0, 5); // 20-cent hopper third
     }
 
     #[test]
@@ -681,12 +779,15 @@ mod tests {
             vec![(h1, 100), (h2, 50), (h3, 20)],
             HopperSelectionStrategy::SmallestFirst,
             Duration::from_millis(250),
+            HashSet::new(),
         );
 
+        let available = pool.available_hopper_values(&HashSet::new());
+
         // 100 = 5x20 with smallest first
-        let (plan, remainder) = pool.generate_payout_plan(100, &pool.hopper_values);
+        let (plan, remainder) = pool.generate_payout_plan(100, &available);
         assert_eq!(remainder, 0);
-        assert_eq!(plan.get(&5), Some(&5)); // 5x20 = 100
+        assert!(plan.contains(&(5, 5))); // 5x20 = 100
     }
 
     #[test]
@@ -698,5 +799,126 @@ mod tests {
         assert!(pool.can_payout(20)); // 20
         assert!(!pool.can_payout(5)); // Can't make 5 with 100, 50, 20
         assert!(!pool.can_payout(15)); // Can't make 15
+    }
+
+    #[test]
+    fn disable_and_enable_hopper() {
+        let pool = create_test_pool();
+
+        // Initially all enabled
+        assert!(!pool.is_hopper_disabled(3));
+        assert!(pool.disabled_hoppers().is_empty());
+
+        // Disable hopper 3
+        pool.disable_hopper(3).expect("should succeed");
+        assert!(pool.is_hopper_disabled(3));
+        assert!(!pool.is_hopper_disabled(4));
+        assert_eq!(pool.disabled_hoppers().len(), 1);
+
+        // Re-enable hopper 3
+        pool.enable_hopper(3).expect("should succeed");
+        assert!(!pool.is_hopper_disabled(3));
+        assert!(pool.disabled_hoppers().is_empty());
+    }
+
+    #[test]
+    fn disable_hopper_not_found() {
+        let pool = create_test_pool();
+        let result = pool.disable_hopper(99);
+        assert!(matches!(result, Err(PayoutPoolError::HopperNotFound(99))));
+    }
+
+    #[test]
+    fn enable_hopper_not_found() {
+        let pool = create_test_pool();
+        let result = pool.enable_hopper(99);
+        assert!(matches!(result, Err(PayoutPoolError::HopperNotFound(99))));
+    }
+
+    #[test]
+    fn can_payout_respects_disabled_hoppers() {
+        let pool = create_test_pool();
+
+        // With all hoppers: 170 = 100 + 50 + 20
+        assert!(pool.can_payout(170));
+
+        // Disable the 100-cent hopper
+        pool.disable_hopper(3).expect("should succeed");
+
+        // Now 170 = 3x50 + 1x20 = 150 + 20 = 170
+        assert!(pool.can_payout(170));
+
+        // Disable the 50-cent hopper too
+        pool.disable_hopper(4).expect("should succeed");
+
+        // Now only 20-cent hopper: 170 is not divisible by 20
+        assert!(!pool.can_payout(170));
+        // But 100 = 5x20
+        assert!(pool.can_payout(100));
+    }
+
+    #[test]
+    fn available_hopper_values_excludes_disabled() {
+        let pool = create_test_pool();
+
+        // All available
+        let available = pool.available_hopper_values(&HashSet::new());
+        assert_eq!(available.len(), 3);
+
+        // Disable hopper 4
+        pool.disable_hopper(4).expect("should succeed");
+        let available = pool.available_hopper_values(&HashSet::new());
+        assert_eq!(available.len(), 2);
+        assert!(!available.iter().any(|(a, _)| *a == 4));
+        assert!(available.iter().any(|(a, _)| *a == 3));
+        assert!(available.iter().any(|(a, _)| *a == 5));
+    }
+
+    #[test]
+    fn available_hopper_values_excludes_extra() {
+        let pool = create_test_pool();
+
+        let mut extra = HashSet::new();
+        extra.insert(3);
+        extra.insert(5);
+
+        let available = pool.available_hopper_values(&extra);
+        assert_eq!(available.len(), 1);
+        assert!(available.iter().any(|(a, _)| *a == 4));
+    }
+
+    #[test]
+    fn initially_disabled_hoppers() {
+        let (tx, _rx) = mpsc::channel(1);
+
+        let h1 = PayoutDevice::new(
+            Device::new(3, Category::Payout, ChecksumType::Crc8),
+            tx.clone(),
+        );
+        let h2 = PayoutDevice::new(Device::new(4, Category::Payout, ChecksumType::Crc8), tx);
+
+        let mut initially_disabled = HashSet::new();
+        initially_disabled.insert(3);
+
+        let pool = PayoutPool::new(
+            vec![(h1, 100), (h2, 50)],
+            HopperSelectionStrategy::LargestFirst,
+            Duration::from_millis(250),
+            initially_disabled,
+        );
+
+        assert!(pool.is_hopper_disabled(3));
+        assert!(!pool.is_hopper_disabled(4));
+        assert_eq!(pool.disabled_hoppers().len(), 1);
+    }
+
+    #[test]
+    fn pool_is_clone() {
+        let pool = create_test_pool();
+        let pool2 = pool.clone();
+
+        // Both should share the same state
+        pool.disable_hopper(3).expect("should succeed");
+        assert!(pool2.is_hopper_disabled(3));
     }
 }

@@ -43,6 +43,10 @@ pub enum PayoutPoolError {
     /// All hoppers failed during the operation.
     #[error("all hoppers failed")]
     AllHoppersFailed,
+
+    /// The specified hopper is disabled.
+    #[error("hopper {0} is disabled")]
+    HopperDisabled(u8),
 }
 
 impl From<CommandError> for PayoutPoolError {

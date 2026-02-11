@@ -1,49 +1,37 @@
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
+
+use derive_builder::Builder;
 
 use crate::device::payout::PayoutDevice;
 
-use super::{
-    PayoutPoolResult,
-    config::HopperSelectionStrategy,
-    pool::PayoutPool,
-};
+use super::{PayoutPoolResult, config::HopperSelectionStrategy, pool::PayoutPool};
 
-/// Builder for constructing a [`PayoutPool`].
-///
-/// # Example
-///
-/// ```ignore
-/// let pool = PayoutPool::builder()
-///     .add_hopper(hopper1, 100)  // 1.00 EUR coin
-///     .add_hopper(hopper2, 50)   // 0.50 EUR coin
-///     .with_selection_strategy(HopperSelectionStrategy::LargestFirst)
-///     .with_polling_interval(Duration::from_millis(250))
-///     .build_and_initialize()
-///     .await?;
-/// ```
-#[derive(Debug, Default)]
-pub struct PayoutPoolBuilder {
+/// Internal configuration struct used by `derive_builder` to generate
+/// [`PayoutPoolBuilder`].
+#[derive(Debug, Clone, Builder)]
+#[builder(
+    name = "PayoutPoolBuilder",
+    vis = "pub",
+    pattern = "owned",
+    build_fn(skip),
+    derive(Debug)
+)]
+#[allow(dead_code)]
+pub(crate) struct PayoutPoolConfig {
+    #[builder(setter(custom), default)]
     hoppers: Vec<(PayoutDevice, u32)>,
+
+    #[builder(default)]
     selection_strategy: HopperSelectionStrategy,
+
+    #[builder(default = "Duration::from_millis(250)")]
     polling_interval: Duration,
+
+    #[builder(setter(custom), default)]
+    initially_disabled: HashSet<u8>,
 }
 
 impl PayoutPoolBuilder {
-    /// Creates a new builder with default settings.
-    ///
-    /// Default configuration:
-    /// - No hoppers
-    /// - Largest-first selection strategy
-    /// - 250ms polling interval
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            hoppers: Vec::new(),
-            selection_strategy: HopperSelectionStrategy::default(),
-            polling_interval: Duration::from_millis(250),
-        }
-    }
-
     /// Adds a hopper to the pool with its coin value.
     ///
     /// # Arguments
@@ -52,7 +40,9 @@ impl PayoutPoolBuilder {
     /// * `value` - The coin value this hopper dispenses (in smallest currency units, e.g., cents)
     #[must_use]
     pub fn add_hopper(mut self, hopper: PayoutDevice, value: u32) -> Self {
-        self.hoppers.push((hopper, value));
+        self.hoppers
+            .get_or_insert_with(Vec::new)
+            .push((hopper, value));
         self
     }
 
@@ -61,37 +51,31 @@ impl PayoutPoolBuilder {
     /// Each tuple contains a payout device and its coin value.
     #[must_use]
     pub fn add_hoppers(mut self, hoppers: impl IntoIterator<Item = (PayoutDevice, u32)>) -> Self {
-        self.hoppers.extend(hoppers);
+        self.hoppers.get_or_insert_with(Vec::new).extend(hoppers);
         self
     }
 
-    /// Sets the hopper selection strategy.
+    /// Sets the hopper addresses that should be initially disabled.
     ///
-    /// - `LargestFirst` - Use highest value coins first (default, minimizes coin count)
-    /// - `SmallestFirst` - Use lowest value coins first
-    /// - `BalanceInventory` - Prefer hoppers with highest inventory
+    /// Disabled hoppers are part of the pool but will not be used for
+    /// payout operations until explicitly enabled.
     #[must_use]
-    pub fn with_selection_strategy(mut self, strategy: HopperSelectionStrategy) -> Self {
-        self.selection_strategy = strategy;
+    pub fn with_disabled_hoppers(mut self, addresses: impl IntoIterator<Item = u8>) -> Self {
+        self.initially_disabled = Some(addresses.into_iter().collect());
         self
     }
 
-    /// Sets the polling interval for status checks during dispense operations.
-    #[must_use]
-    pub fn with_polling_interval(mut self, interval: Duration) -> Self {
-        self.polling_interval = interval;
-        self
-    }
-
-    /// Builds the pool without initializing it.
+    /// Builds the pool.
     ///
-    /// You must call [`PayoutPool::initialize`] before using the pool.
+    /// You must call [`PayoutPool::initialize`] before using the pool for payout operations.
     #[must_use]
     pub fn build(self) -> PayoutPool {
         PayoutPool::new(
-            self.hoppers,
-            self.selection_strategy,
-            self.polling_interval,
+            self.hoppers.unwrap_or_default(),
+            self.selection_strategy.unwrap_or_default(),
+            self.polling_interval
+                .unwrap_or(Duration::from_millis(250)),
+            self.initially_disabled.unwrap_or_default(),
         )
     }
 
@@ -103,7 +87,7 @@ impl PayoutPoolBuilder {
     ///
     /// Returns an error if initialization fails (e.g., no hoppers, all hoppers fail).
     pub async fn build_and_initialize(self) -> PayoutPoolResult<PayoutPool> {
-        let mut pool = self.build();
+        let pool = self.build();
         pool.initialize().await?;
         Ok(pool)
     }
@@ -123,11 +107,13 @@ mod tests {
 
     #[test]
     fn builder_default() {
-        let builder = PayoutPoolBuilder::new();
-        let pool = builder.build();
+        let pool = PayoutPoolBuilder::default().build();
 
         assert_eq!(pool.hopper_count(), 0);
-        assert_eq!(pool.selection_strategy(), &HopperSelectionStrategy::LargestFirst);
+        assert_eq!(
+            pool.selection_strategy(),
+            &HopperSelectionStrategy::LargestFirst
+        );
         assert_eq!(pool.polling_interval(), Duration::from_millis(250));
     }
 
@@ -135,9 +121,7 @@ mod tests {
     fn builder_add_hopper() {
         let hopper = create_test_hopper(3);
 
-        let pool = PayoutPool::builder()
-            .add_hopper(hopper, 100)
-            .build();
+        let pool = PayoutPool::builder().add_hopper(hopper, 100).build();
 
         assert_eq!(pool.hopper_count(), 1);
     }
@@ -159,7 +143,7 @@ mod tests {
     #[test]
     fn builder_selection_strategy() {
         let pool = PayoutPool::builder()
-            .with_selection_strategy(HopperSelectionStrategy::SmallestFirst)
+            .selection_strategy(HopperSelectionStrategy::SmallestFirst)
             .build();
 
         assert_eq!(
@@ -171,9 +155,24 @@ mod tests {
     #[test]
     fn builder_polling_interval() {
         let pool = PayoutPool::builder()
-            .with_polling_interval(Duration::from_millis(100))
+            .polling_interval(Duration::from_millis(100))
             .build();
 
         assert_eq!(pool.polling_interval(), Duration::from_millis(100));
+    }
+
+    #[test]
+    fn builder_disabled_hoppers() {
+        let h1 = create_test_hopper(3);
+        let h2 = create_test_hopper(4);
+
+        let pool = PayoutPool::builder()
+            .add_hopper(h1, 100)
+            .add_hopper(h2, 50)
+            .with_disabled_hoppers(vec![3])
+            .build();
+
+        assert!(pool.is_hopper_disabled(3));
+        assert!(!pool.is_hopper_disabled(4));
     }
 }
