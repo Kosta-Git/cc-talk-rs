@@ -170,7 +170,10 @@ impl PayoutPool {
     #[instrument(skip(self), fields(address))]
     pub fn disable_hopper(&self, address: u8) -> PayoutPoolResult<()> {
         self.get_hopper(address)?;
-        let mut disabled = self.disabled_hoppers.lock().expect("should not be poisoned");
+        let mut disabled = self
+            .disabled_hoppers
+            .lock()
+            .expect("should not be poisoned");
         disabled.insert(address);
         info!(address, "hopper disabled");
         Ok(())
@@ -187,7 +190,10 @@ impl PayoutPool {
     #[instrument(skip(self), fields(address))]
     pub fn enable_hopper(&self, address: u8) -> PayoutPoolResult<()> {
         self.get_hopper(address)?;
-        let mut disabled = self.disabled_hoppers.lock().expect("should not be poisoned");
+        let mut disabled = self
+            .disabled_hoppers
+            .lock()
+            .expect("should not be poisoned");
         disabled.remove(&address);
         info!(address, "hopper enabled");
         Ok(())
@@ -215,7 +221,10 @@ impl PayoutPool {
     ///
     /// Returns `(address, coin_value)` pairs sorted by the selection strategy.
     fn available_hopper_values(&self, extra_exclusions: &HashSet<u8>) -> Vec<(u8, u32)> {
-        let disabled = self.disabled_hoppers.lock().expect("should not be poisoned");
+        let disabled = self
+            .disabled_hoppers
+            .lock()
+            .expect("should not be poisoned");
         let mut hoppers: Vec<(u8, u32)> = self
             .hopper_values
             .iter()
@@ -544,16 +553,16 @@ impl PayoutPool {
         let mut dispensed: u8 = 0;
         let mut failures: u8 = 0;
 
+        if let Err(e) = hopper.enable_hopper().await {
+            error!(address, count, error = %e, "failed to enable hopper");
+            emit_event(event_tx, PayoutEvent::HopperError { address, error: e });
+            return 0;
+        }
+
         // Initiate the dispense
         if let Err(e) = hopper.payout_serial_number(count).await {
             error!(address, count, error = %e, "failed to initiate dispense");
-            emit_event(
-                event_tx,
-                PayoutEvent::HopperError {
-                    address,
-                    error: e,
-                },
-            );
+            emit_event(event_tx, PayoutEvent::HopperError { address, error: e });
             return 0;
         }
 
@@ -596,17 +605,15 @@ impl PayoutPool {
 
                     if failures >= MAX_FAILURES {
                         error!(address, "max failures reached, stopping dispense");
-                        emit_event(
-                            event_tx,
-                            PayoutEvent::HopperError {
-                                address,
-                                error: e,
-                            },
-                        );
+                        emit_event(event_tx, PayoutEvent::HopperError { address, error: e });
                         let _ = hopper.emergency_stop().await;
                     }
                 }
             }
+        }
+
+        if let Err(e) = hopper.disable_hopper().await {
+            error!(address, count, error = %e, "failed to disable hopper");
         }
 
         debug!(

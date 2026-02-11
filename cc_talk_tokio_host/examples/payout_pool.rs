@@ -98,17 +98,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Device::new(4, Category::Payout, ChecksumType::Crc8),
         tx.clone(),
     );
-    let hopper3 = PayoutDevice::new(
-        Device::new(5, Category::Payout, ChecksumType::Crc8),
-        tx,
-    );
+    let hopper3 = PayoutDevice::new(Device::new(5, Category::Payout, ChecksumType::Crc8), tx);
 
     // Build the payout pool
     info!("Building payout pool...");
     let pool = PayoutPool::builder()
         .add_hopper(hopper1, 100) // 1.00 EUR
         .add_hopper(hopper2, 50) // 0.50 EUR
-        .add_hopper(hopper3, 20) // 0.20 EUR
+        .add_hopper(hopper3, 10) // 0.20 EUR
         .selection_strategy(HopperSelectionStrategy::LargestFirst)
         .polling_interval(Duration::from_millis(250))
         .build();
@@ -165,10 +162,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     address,
                     coin_value,
                 } => {
-                    warn!(
-                        "Hopper {} ({} cents) is empty!",
-                        address, coin_value
-                    );
+                    warn!("Hopper {} ({} cents) is empty!", address, coin_value);
                 }
                 PayoutEvent::PlanRebalanced {
                     exhausted_hopper,
