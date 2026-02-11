@@ -26,8 +26,13 @@ name = "bill_validator"
 name = "currency_acceptor_pool"
 
 [dependencies]
-cc_talk_core = { path = "../cc_talk_core", features = ["std"] }
-cc_talk_host = { path = "../cc_talk_host", features = ["tracing", "std"] }
+cc_talk_core = { path = "../cc_talk_core", features = [
+  "std",
+], version = "0.0.4" }
+cc_talk_host = { path = "../cc_talk_host", features = [
+  "tracing",
+  "std",
+], version = "0.0.4" }
 
 tokio = { version = "1.49.0", features = ["full"] }
 tracing = { version = "0.1.41" }
