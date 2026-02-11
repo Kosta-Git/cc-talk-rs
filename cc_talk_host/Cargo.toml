@@ -1,6 +1,6 @@
 [package]
 name = "cc_talk_host"
-version = "0.0.2"
+version = "0.0.4"
 edition = "2024"
 license = "GPL-3.0-or-later"
 authors = ["Kosta S. <github.operation464@simplelogin.com>"]
