@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{self, mpsc, oneshot};
 use tracing::{debug, error, info, trace, warn};
 
 use crate::{
@@ -29,6 +29,12 @@ const RECOVERY_THRESHOLD: HopperInventoryLevel = HopperInventoryLevel::Medium;
 pub type SensorPollGuard =
     DropGuard<mpsc::Receiver<SensorEvent>, Box<dyn FnOnce(mpsc::Receiver<SensorEvent>) + Send>>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PollingStatus {
+    Paused,
+    Running,
+}
+
 /// Standalone sensor monitoring for a set of [`PayoutDevice`] instances.
 ///
 /// `PayoutSensorPool` provides continuous inventory monitoring with
@@ -39,7 +45,7 @@ pub type SensorPollGuard =
 ///
 /// `PayoutSensorPool` implements [`Clone`] and shares its internal state
 /// across clones.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PayoutSensorPool {
     hoppers: Vec<PayoutDevice>,
     /// Per-hopper empty flags.
@@ -185,7 +191,10 @@ impl PayoutSensorPool {
     /// Returns [`PollingError::AlreadyLeased`] if background polling is
     /// already active.
     #[must_use = "nothing happens if the result is not used"]
-    pub fn try_start_polling(&self) -> Result<SensorPollGuard, PollingError> {
+    pub fn try_start_polling(
+        &self,
+        polling_status: sync::watch::Receiver<PollingStatus>,
+    ) -> Result<SensorPollGuard, PollingError> {
         let mut is_polling = self.is_polling.lock().expect("should not be poisoned");
         if *is_polling {
             warn!("sensor background polling already active");
@@ -205,9 +214,18 @@ impl PayoutSensorPool {
         let pool_clone = self.clone();
 
         let handle = tokio::spawn(async move {
+            let mut polling_status = polling_status;
             loop {
                 let mut inventories = Vec::new();
                 let mut errors = Vec::new();
+
+                if *polling_status.borrow() == PollingStatus::Paused {
+                    if polling_status.changed().await.is_err() {
+                        info!("polling status sender dropped, stopping sensor background polling");
+                        break;
+                    }
+                    continue;
+                }
 
                 for hopper in &pool_clone.hoppers {
                     let address = hopper.device.address();
@@ -408,21 +426,23 @@ mod tests {
     #[tokio::test]
     async fn try_start_polling_returns_already_leased_when_called_twice() {
         let sensor = create_sensor_pool();
+        let (_tx, rx) = sync::watch::channel(PollingStatus::Running);
 
         let _guard = sensor
-            .try_start_polling()
+            .try_start_polling(rx.clone())
             .expect("first call should succeed");
-        let result = sensor.try_start_polling();
+        let result = sensor.try_start_polling(rx);
         assert!(matches!(result, Err(PollingError::AlreadyLeased)));
     }
 
     #[tokio::test]
     async fn try_start_polling_can_restart_after_drop() {
         let sensor = create_sensor_pool();
+        let (_tx, rx) = sync::watch::channel(PollingStatus::Running);
 
         {
             let _guard = sensor
-                .try_start_polling()
+                .try_start_polling(rx.clone())
                 .expect("first call should succeed");
             // Guard is dropped here.
         }
@@ -431,7 +451,7 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(10)).await;
 
         let _guard = sensor
-            .try_start_polling()
+            .try_start_polling(rx)
             .expect("should succeed after guard dropped");
     }
 }

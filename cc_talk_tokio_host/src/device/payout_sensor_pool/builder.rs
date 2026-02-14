@@ -18,7 +18,7 @@ impl PayoutSensorPoolBuilder {
     pub fn new() -> Self {
         Self {
             hoppers: Vec::new(),
-            polling_interval: Duration::from_millis(500),
+            polling_interval: Duration::from_secs(10),
             channel_size: 16,
         }
     }
@@ -39,7 +39,7 @@ impl PayoutSensorPoolBuilder {
 
     /// Sets the polling interval for background sensor monitoring.
     ///
-    /// Defaults to 500ms.
+    /// Defaults to 10s.
     #[must_use]
     pub const fn polling_interval(mut self, interval: Duration) -> Self {
         self.polling_interval = interval;

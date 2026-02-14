@@ -22,7 +22,8 @@
 //!     .build();
 //!
 //! // Start background polling — returns a guard with an event receiver
-//! let mut guard = sensor_pool.try_start_polling()?;
+//! let (_tx, rx) = tokio::sync::watch::channel(PollingStatus::Running);
+//! let mut guard = sensor_pool.try_start_polling(rx)?;
 //!
 //! while let Some(event) = guard.recv().await {
 //!     match event {
@@ -48,4 +49,4 @@ mod pool;
 pub use builder::PayoutSensorPoolBuilder;
 pub use error::{PayoutSensorPoolError, PayoutSensorPoolResult};
 pub use event::{HopperSensorError, HopperSensorReading, RecoveryReason, SensorEvent};
-pub use pool::{PayoutSensorPool, SensorPollGuard};
+pub use pool::{PayoutSensorPool, PollingStatus, SensorPollGuard};

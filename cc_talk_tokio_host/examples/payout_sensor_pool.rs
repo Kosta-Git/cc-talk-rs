@@ -16,7 +16,7 @@ use cc_talk_core::cc_talk::{Category, ChecksumType, Device};
 use cc_talk_tokio_host::{
     device::{
         payout::PayoutDevice,
-        payout_sensor_pool::{PayoutSensorPool, SensorEvent},
+        payout_sensor_pool::{PayoutSensorPool, PollingStatus, SensorEvent},
     },
     transport::{retry::RetryConfig, tokio_transport::CcTalkTokioTransport},
 };
@@ -104,8 +104,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start background sensor polling
     info!("Starting background sensor polling...");
+    let (_polling_tx, polling_rx) = tokio::sync::watch::channel(PollingStatus::Running);
     let mut guard = sensor_pool
-        .try_start_polling()
+        .try_start_polling(polling_rx)
         .expect("should start polling");
 
     let _ = sensor_pool.mark_empty(3);
