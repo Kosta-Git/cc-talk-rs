@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -48,9 +48,11 @@ pub enum PollingStatus {
 #[derive(Clone)]
 pub struct PayoutSensorPool {
     hoppers: Vec<PayoutDevice>,
-    /// Per-hopper empty flags.
-    empty_hoppers: Arc<Mutex<HashSet<u8>>>,
     /// Last known inventory level per hopper.
+    ///
+    /// When a hopper is marked empty, its level is set to
+    /// [`HopperInventoryLevel::Empty`] and remains sticky until recovery
+    /// threshold is met or [`mark_non_empty`](Self::mark_non_empty) is called.
     last_levels: Arc<Mutex<HashMap<u8, HopperInventoryLevel>>>,
     /// Whether background polling is active.
     is_polling: Arc<Mutex<bool>>,
@@ -75,7 +77,6 @@ impl PayoutSensorPool {
     ) -> Self {
         Self {
             hoppers,
-            empty_hoppers: Arc::new(Mutex::new(HashSet::new())),
             last_levels: Arc::new(Mutex::new(HashMap::new())),
             is_polling: Arc::new(Mutex::new(false)),
             polling_interval,
@@ -100,7 +101,12 @@ impl PayoutSensorPool {
         self.hoppers.iter().any(|h| h.device.address() == address)
     }
 
-    /// Marks a hopper as empty.
+    /// Marks a hopper as empty by setting its inventory level to
+    /// [`HopperInventoryLevel::Empty`].
+    ///
+    /// The level remains `Empty` until the sensor detects a level at or above
+    /// the recovery threshold, or [`mark_non_empty`](Self::mark_non_empty) is
+    /// called.
     ///
     /// # Errors
     ///
@@ -111,16 +117,19 @@ impl PayoutSensorPool {
             return Err(PayoutSensorPoolError::HopperNotFound(address));
         }
 
-        self.empty_hoppers
+        self.last_levels
             .lock()
             .expect("should not be poisoned")
-            .insert(address);
+            .insert(address, HopperInventoryLevel::Empty);
 
         info!(address, "hopper marked empty");
         Ok(())
     }
 
-    /// Marks a hopper as non-empty.
+    /// Clears the empty state of a hopper by resetting its inventory level
+    /// to [`HopperInventoryLevel::Unknown`].
+    ///
+    /// The actual level will be updated on the next sensor poll.
     ///
     /// # Errors
     ///
@@ -131,31 +140,24 @@ impl PayoutSensorPool {
             return Err(PayoutSensorPoolError::HopperNotFound(address));
         }
 
-        self.empty_hoppers
+        self.last_levels
             .lock()
             .expect("should not be poisoned")
-            .remove(&address);
+            .insert(address, HopperInventoryLevel::Unknown);
 
         info!(address, "hopper marked non-empty");
         Ok(())
     }
 
-    /// Returns `true` if the hopper is currently marked as empty.
+    /// Returns `true` if the hopper's inventory level is
+    /// [`HopperInventoryLevel::Empty`].
     #[must_use]
     pub fn is_empty(&self, address: u8) -> bool {
-        self.empty_hoppers
+        self.last_levels
             .lock()
             .expect("should not be poisoned")
-            .contains(&address)
-    }
-
-    /// Returns the set of all hopper addresses currently marked as empty.
-    #[must_use]
-    pub fn empty_hoppers(&self) -> HashSet<u8> {
-        self.empty_hoppers
-            .lock()
-            .expect("should not be poisoned")
-            .clone()
+            .get(&address)
+            .is_some_and(|level| *level == HopperInventoryLevel::Empty)
     }
 
     /// Returns the last polled inventory level for a specific hopper.
@@ -232,56 +234,69 @@ impl PayoutSensorPool {
 
                     match hopper.get_sensor_status().await {
                         Ok((_level_raw, status)) => {
-                            let level = HopperInventoryLevel::from(status);
+                            let sensor_level = HopperInventoryLevel::from(status);
 
-                            // Detect level changes.
                             let previous = {
+                                let last = pool_clone
+                                    .last_levels
+                                    .lock()
+                                    .expect("should not be poisoned");
+                                last.get(&address).copied()
+                            };
+
+                            let was_empty = previous == Some(HopperInventoryLevel::Empty);
+
+                            // If the hopper was marked empty, only update
+                            // its level when the sensor reports at or above
+                            // the recovery threshold.
+                            let effective_level = if was_empty
+                                && sensor_level < RECOVERY_THRESHOLD
+                            {
+                                HopperInventoryLevel::Empty
+                            } else {
+                                sensor_level
+                            };
+
+                            // Store the effective level.
+                            {
                                 let mut last = pool_clone
                                     .last_levels
                                     .lock()
                                     .expect("should not be poisoned");
-                                last.insert(address, level)
-                            };
+                                last.insert(address, effective_level);
+                            }
 
+                            // Detect level changes.
                             if let Some(prev) = previous
-                                && prev != level
+                                && prev != effective_level
                             {
-                                trace!(address, %prev, %level, "hopper level changed");
+                                trace!(address, %prev, %effective_level, "hopper level changed");
                                 let _ = tx
                                     .send(SensorEvent::LevelChanged {
                                         address,
                                         previous: prev,
-                                        current: level,
+                                        current: effective_level,
                                     })
                                     .await;
                             }
 
-                            // Auto-recovery: if hopper is marked empty and level >= threshold.
-                            let is_marked_empty = pool_clone
-                                .empty_hoppers
-                                .lock()
-                                .expect("should not be poisoned")
-                                .contains(&address);
-
-                            if is_marked_empty && level >= RECOVERY_THRESHOLD {
-                                pool_clone
-                                    .empty_hoppers
-                                    .lock()
-                                    .expect("should not be poisoned")
-                                    .remove(&address);
-
-                                info!(address, %level, "hopper auto-recovered from empty state");
+                            // Auto-recovery: hopper was empty and sensor
+                            // now reports at or above the threshold.
+                            if was_empty && sensor_level >= RECOVERY_THRESHOLD {
+                                info!(address, %sensor_level, "hopper auto-recovered from empty state");
                                 let _ = tx
                                     .send(SensorEvent::MarkedNonEmpty {
                                         address,
-                                        reason: RecoveryReason::SensorRecovery { level },
+                                        reason: RecoveryReason::SensorRecovery {
+                                            level: sensor_level,
+                                        },
                                     })
                                     .await;
                             }
 
                             inventories.push(HopperSensorReading {
                                 address,
-                                level,
+                                level: effective_level,
                                 status,
                             });
                         }
@@ -362,9 +377,17 @@ mod tests {
         assert!(!sensor.is_empty(3));
         sensor.mark_empty(3).unwrap();
         assert!(sensor.is_empty(3));
+        assert_eq!(
+            sensor.last_inventory(3),
+            Some(HopperInventoryLevel::Empty)
+        );
 
         sensor.mark_non_empty(3).unwrap();
         assert!(!sensor.is_empty(3));
+        assert_eq!(
+            sensor.last_inventory(3),
+            Some(HopperInventoryLevel::Unknown)
+        );
     }
 
     #[test]
@@ -397,19 +420,25 @@ mod tests {
     }
 
     #[test]
-    fn empty_hoppers_returns_correct_set() {
+    fn mark_empty_sets_level_to_empty() {
         let sensor = create_sensor_pool();
-
-        assert!(sensor.empty_hoppers().is_empty());
 
         sensor.mark_empty(3).unwrap();
         sensor.mark_empty(5).unwrap();
 
-        let empty = sensor.empty_hoppers();
-        assert_eq!(empty.len(), 2);
-        assert!(empty.contains(&3));
-        assert!(empty.contains(&5));
-        assert!(!empty.contains(&4));
+        assert!(sensor.is_empty(3));
+        assert!(!sensor.is_empty(4));
+        assert!(sensor.is_empty(5));
+
+        assert_eq!(
+            sensor.last_inventory(3),
+            Some(HopperInventoryLevel::Empty)
+        );
+        assert_eq!(sensor.last_inventory(4), None);
+        assert_eq!(
+            sensor.last_inventory(5),
+            Some(HopperInventoryLevel::Empty)
+        );
     }
 
     #[test]

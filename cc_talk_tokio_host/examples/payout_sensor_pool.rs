@@ -109,6 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .try_start_polling(polling_rx)
         .expect("should start polling");
 
+    // Mark all hoppers as empty initially (e.g. unknown fill state at startup).
     let _ = sensor_pool.mark_empty(3);
     let _ = sensor_pool.mark_empty(4);
     let _ = sensor_pool.mark_empty(5);
